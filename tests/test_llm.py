@@ -123,3 +123,18 @@ def test_malformed_groq_arguments_are_flagged_not_raised():
     call = SimpleNamespace(id="c", function=SimpleNamespace(name="search", arguments="{query: oops"))
     parsed = _parse_call(call)
     assert parsed.args == {} and "not valid JSON" in parsed.args_error
+
+
+def test_compact_openai_format_shortens_only_older_tool_results():
+    long = "x" * 1000
+    history = [Message("user", "q")]
+    for n in range(3):
+        history += [Message("assistant", "", [ToolCall("search", {"query": str(n)}, id=f"c{n}")], provider="groq"),
+                    Message("tool", tool_call_id=f"c{n}", tool_name="search",
+                            result={"results": [{"source_id": f"S{n}", "title": "T", "text": long}]})]  # fmt: skip
+    def lengths(keep_full):
+        return [len(json.loads(m["content"])["results"][0]["text"]) for m in to_openai("s", history, keep_full)
+                if m["role"] == "tool"]  # fmt: skip
+
+    assert lengths(2) == [304, 1000, 1000] and lengths(0) == [304, 304, 304]
+    assert all(m["role"] != "tool" or len(m["content"]) > 1000 for m in to_openai("s", history))
