@@ -165,6 +165,17 @@ def test_get_document_reads_the_article_and_rejects_unknown_ids():
     assert out.status == "answered" and out.gates["retrieval"]["best_ce_score"] == 6.0
 
 
+def test_single_shot_mode_searches_once_and_runs_gates():
+    llm = ScriptedLLM([submit("answered", "Directed by Spielberg [S1].", ["S1"])], [SUPPORTED])
+    events = []
+    out = Agent(llm, FakeSearcher(), FakeStore()).ask(
+        "Who directed Jaws?", AgentParams(agentic=False), on_event=events.append
+    )
+    assert out.status == "answered" and out.searched == ["Who directed Jaws?"]
+    assert [e["stage"] for e in events] == ["searching", "found", "submitting", "verifying"]
+    assert out.usage["llm_calls"] == 2  # one single-shot answer + one verifier
+
+
 def test_llm_outage_returns_a_structured_error_not_an_answer():
     out = ask(ScriptedLLM([LLMUnavailable([LLMError("gemini", "down", retryable=False)])]))
     assert out.status == "error" and out.answer == "" and "LLM unavailable" in out.error

@@ -9,7 +9,7 @@ can be traced to the exact check that produced it (`AgentAnswer.gates`).
 
 import time
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Any, Callable, Literal
 
 from pydantic import BaseModel, Field
 from qdrant_client.http.exceptions import ResponseHandlingException, UnexpectedResponse
@@ -28,6 +28,7 @@ REFUSAL = "I don't have enough information in the documents to answer this."
 
 class AgentParams(BaseModel):
     search: SearchParams = Field(default_factory=SearchParams)
+    agentic: bool = True  # False = single-shot (one search with the raw question, then submit_answer)
     max_iterations: int = Field(5, gt=0)  # investigator LLM calls before the answer is forced
     max_tool_calls: int = Field(8, gt=0)  # search/get_document budget
     # Cross-encoder logit. evaluation.calibrate_floor: 3.92 passes 95% of answerable tuning questions and
@@ -67,14 +68,23 @@ class Agent:
         self.searcher = searcher
         self.store = store
 
-    def ask(self, question: str, params: AgentParams | None = None) -> AgentAnswer:
+    def ask(
+        self,
+        question: str,
+        params: AgentParams | None = None,
+        on_event: Callable[[dict[str, Any]], None] | None = None,
+    ) -> AgentAnswer:
         params = params or AgentParams()
+        emit = on_event or (lambda _: None)
         start = time.perf_counter()
         toolbox = Toolbox(self.searcher, self.store, params.search)
         out = AgentAnswer(question, "error", "")
         try:
-            submitted = self._investigate(question, params, toolbox, out)
-            self._finalize(question, submitted, params, toolbox, out)
+            if params.agentic:
+                submitted = self._investigate(question, params, toolbox, out, emit)
+            else:
+                submitted = self._single_shot(question, toolbox, out, emit)
+            self._finalize(question, submitted, params, toolbox, out, emit)
         except LLMUnavailable as e:
             out.status, out.answer, out.error = "error", "", f"LLM unavailable: {e}"
         except (UnexpectedResponse, ResponseHandlingException) as e:
@@ -85,10 +95,13 @@ class Agent:
 
     # --- the loop -------------------------------------------------------------------------------
 
-    def _investigate(self, question: str, params: AgentParams, toolbox: Toolbox, out: AgentAnswer) -> dict:
+    def _investigate(self, question: str, params: AgentParams, toolbox: Toolbox, out: AgentAnswer,
+                     emit: Callable[[dict[str, Any]], None] = lambda _: None) -> dict:  # fmt: skip
         messages = [Message("user", question)]
         tool_calls = 0
-        for _ in range(params.max_iterations):
+        for iteration in range(1, params.max_iterations + 1):
+            emit({"type": "progress", "stage": "thinking", "iteration": iteration,
+                  "message": "planning…" if iteration == 1 else f"thinking (step {iteration})…"})  # fmt: skip
             response = self._chat(prompts.INVESTIGATOR, messages, toolbox.specs(), out)
             messages.append(response.as_message())
             if not response.tool_calls:
@@ -110,15 +123,11 @@ class Agent:
                     result = {"error": prompts.SUBMIT_NOW}
                 else:
                     tool_calls += 1
-                    step_start = time.perf_counter()
-                    result = toolbox.run(call)
-                    out.trace.append({"step": "tool", "tool": call.name, "args": call.args,
-                                      "results": len(result.get("results", result.get("passages", []))),
-                                      "error": result.get("error"),
-                                      "ms": round((time.perf_counter() - step_start) * 1000, 1)})  # fmt: skip
+                    result = self._run_tool(call, toolbox, out, emit)
                 messages.append(Message("tool", tool_call_id=call.id, tool_name=call.name, result=result))
 
         # Out of iterations: one last call that can only submit.
+        emit({"type": "progress", "stage": "submitting", "message": "drafting final answer…"})
         messages.append(Message("user", prompts.SUBMIT_NOW))
         response = self._chat(prompts.INVESTIGATOR, messages, [SUBMIT], out)
         submit = next((c for c in response.tool_calls if c.name == SUBMIT.name), None)
@@ -127,6 +136,43 @@ class Agent:
             return parsed
         out.gates["loop"] = {"passed": False, "reason": f"agent did not conclude: {parsed}"}
         return {"status": "insufficient", "answer": "", "citations": []}
+
+    def _single_shot(self, question: str, toolbox: Toolbox, out: AgentAnswer,
+                     emit: Callable[[dict[str, Any]], None] = lambda _: None) -> dict:  # fmt: skip
+        """Non-agentic RAG: one search with the raw question, then one LLM call forced to submit_answer."""
+        from app.agent.tools import SEARCH
+        from app.llm.base import ToolCall
+
+        result = self._run_tool(ToolCall(SEARCH.name, {"query": question}), toolbox, out, emit)
+        passages = "\n\n".join(f"[{p['source_id']}] ({p['title']})\n{p['text']}" for p in result.get("results", []))
+        prompt = f"Question: {question}\n\nPassages:\n{passages or '(no passages found)'}\n\n{prompts.SINGLE_SHOT}"
+        emit({"type": "progress", "stage": "submitting", "message": "drafting answer…"})
+        response = self._chat(prompts.INVESTIGATOR, [Message("user", prompt)], [SUBMIT], out)
+        submit = next((c for c in response.tool_calls if c.name == SUBMIT.name), None)
+        parsed = _parse_submit(submit.args) if submit else "no answer submitted"
+        if isinstance(parsed, dict):
+            return parsed
+        out.gates["loop"] = {"passed": False, "reason": f"single-shot did not conclude: {parsed}"}
+        return {"status": "insufficient", "answer": "", "citations": []}
+
+    def _run_tool(self, call, toolbox: Toolbox, out: AgentAnswer,
+                  emit: Callable[[dict[str, Any]], None]) -> dict:  # fmt: skip
+        if call.name == "search_documents":
+            q = call.args.get("query", "") if isinstance(call.args, dict) else ""
+            emit({"type": "progress", "stage": "searching", "query": q, "message": f"searching: {q}"})
+        elif call.name == "get_document":
+            sid = call.args.get("source_id", "") if isinstance(call.args, dict) else ""
+            emit({"type": "progress", "stage": "reading", "source_id": sid, "message": f"reading document {sid}…"})
+        step_start = time.perf_counter()
+        result = toolbox.run(call)
+        n_res = len(result.get("results", result.get("passages", [])))
+        out.trace.append({"step": "tool", "tool": call.name, "args": call.args, "results": n_res,
+                          "error": result.get("error"),
+                          "ms": round((time.perf_counter() - step_start) * 1000, 1)})  # fmt: skip
+        if call.name == "search_documents" and not result.get("error"):
+            emit({"type": "progress", "stage": "found", "count": n_res,
+                  "message": f"found {n_res} passage{'s' if n_res != 1 else ''}"})  # fmt: skip
+        return result
 
     def _chat(self, system, messages, tools, out: AgentAnswer):
         step_start = time.perf_counter()
@@ -141,7 +187,8 @@ class Agent:
 
     # --- the gates ------------------------------------------------------------------------------
 
-    def _finalize(self, question, submitted: dict, params: AgentParams, toolbox: Toolbox, out: AgentAnswer) -> None:
+    def _finalize(self, question, submitted: dict, params: AgentParams, toolbox: Toolbox, out: AgentAnswer,
+                  emit: Callable[[dict[str, Any]], None] = lambda _: None) -> None:  # fmt: skip
         status, answer = submitted["status"], submitted["answer"].strip()
         cited, invalid = check_citations(answer, submitted["citations"], set(toolbox.sources))
         out.gates["citations"] = {"valid": cited, "invalid": invalid, "passed": bool(cited) or status != "answered"}
@@ -158,6 +205,7 @@ class Agent:
                 status, answer = "insufficient", REFUSAL
 
         if status == "answered" and params.verify:
+            emit({"type": "progress", "stage": "verifying", "message": "verifying…"})
             verdict, info = Verifier(self.verifier_llm).check(question, answer, toolbox, cited)
             out.usage["llm_calls"] += 1
             out.usage["input_tokens"] += info.get("usage", {}).get("input_tokens", 0)

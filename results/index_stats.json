@@ -1,0 +1,25 @@
+{
+  "documents": 50000,
+  "doc_tokens": {
+    "n": 50000,
+    "mean": 1256.9,
+    "median": 586.5,
+    "p95": 4773,
+    "max": 56281,
+    "total": 62842814
+  },
+  "strategies": {
+    "recursive": {
+      "chunks_indexed": 0,
+      "chunks_in_collection": 433425,
+      "mean_chunk_tokens": null,
+      "seconds": 2
+    },
+    "fixed": {
+      "chunks_indexed": 92867,
+      "chunks_in_collection": 300059,
+      "mean_chunk_tokens": 235.4,
+      "seconds": 261
+    }
+  }
+}

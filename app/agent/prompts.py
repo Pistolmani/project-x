@@ -27,6 +27,12 @@ SUBMIT_NOW = (
     "use status \"insufficient\" if they do not answer the question."
 )
 
+SINGLE_SHOT = (
+    "Answer the question using ONLY the passages above, by calling submit_answer exactly once. "
+    "Cite the supporting passage id in brackets after each claim, e.g. [S1]; use status "
+    "\"insufficient\" if the passages do not contain the answer, or \"conflict\" if they disagree."
+)
+
 NO_TOOL_CALLED = "Do not reply in plain text. Call submit_answer to finish, or a search tool to continue."
 
 VERIFIER = """You check a drafted answer against the source passages it was written from.

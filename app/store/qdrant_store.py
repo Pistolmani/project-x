@@ -91,7 +91,7 @@ class QdrantStore:
 
         if not self.client.collection_exists(self.documents):
             self.client.create_collection(self.documents, vectors_config={})
-            for name in ("doc_id", "sha256"):
+            for name in ("doc_id", "sha256", "format"):
                 self.client.create_payload_index(
                     self.documents, name, models.PayloadSchemaType.KEYWORD
                 )
@@ -206,8 +206,17 @@ class QdrantStore:
         points, _ = self.client.scroll(self.documents, scroll_filter=flt, limit=1, with_payload=True)
         return points[0].payload if points else None
 
-    def list_documents(self, limit: int = 50, offset: str | None = None) -> tuple[list[dict[str, Any]], str | None]:
-        points, next_offset = self.client.scroll(self.documents, limit=limit, offset=offset, with_payload=True)
+    def list_documents(
+        self,
+        limit: int = 50,
+        offset: str | None = None,
+        fmt: str | None = None,
+        exclude_format: str | None = None,
+    ) -> tuple[list[dict[str, Any]], str | None]:
+        flt = _format_filter(fmt, exclude_format)
+        points, next_offset = self.client.scroll(
+            self.documents, scroll_filter=flt, limit=limit, offset=offset, with_payload=True
+        )
         return [p.payload for p in points], (str(next_offset) if next_offset is not None else None)
 
     def delete_old_versions(self, doc_id: str, keep_version: int) -> None:
@@ -236,3 +245,13 @@ class QdrantStore:
                 ]
             )
         return self.client.count(collection, count_filter=flt, exact=True).count
+
+
+def _format_filter(fmt: str | None, exclude_format: str | None) -> models.Filter | None:
+    must = [models.FieldCondition(key="format", match=models.MatchValue(value=fmt))] if fmt else []
+    must_not = (
+        [models.FieldCondition(key="format", match=models.MatchValue(value=exclude_format))]
+        if exclude_format
+        else []
+    )
+    return models.Filter(must=must or None, must_not=must_not or None) if (must or must_not) else None

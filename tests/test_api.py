@@ -137,3 +137,25 @@ def test_health_reports_store_and_providers(client):
 def test_request_validation(client):
     assert client.post("/ask", json={"question": ""}).status_code == 422
     assert client.post("/search", json={"query": "x", "params": {"top_k": 0}}).status_code == 422
+
+
+def test_ask_stream_emits_progress_then_final_answer(client):
+    client.post("/documents", files={"file": ("jaws.md", JAWS)})
+    with client.stream("POST", "/ask/stream",
+                       json={"question": "Who directed Jaws?", "params": {"relevance_floor": None}}) as r:  # fmt: skip
+        assert r.status_code == 200
+        events = [json.loads(line.removeprefix("data: "))
+                  for line in r.iter_lines() if line.startswith("data: ")]  # fmt: skip
+    assert any(e["type"] == "progress" and e["stage"] == "searching" for e in events)
+    assert events[-1]["type"] == "answer" and events[-1]["answer"]["status"] == "answered"
+
+
+def test_documents_format_filtering_separates_uploads_from_corpus(client):
+    client.post("/documents", files={"file": ("jaws.md", JAWS)})
+    assert len(client.get("/documents", params={"exclude_format": "wikipedia"}).json()["documents"]) == 1
+    assert len(client.get("/documents", params={"format": "wikipedia"}).json()["documents"]) == 0
+
+
+def test_eval_results_serves_tracked_results(client):
+    body = client.get("/eval/results").json()
+    assert "retrieval_comparison" in body and "tuned_weights_fixed" in body

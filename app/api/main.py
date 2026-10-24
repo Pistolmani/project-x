@@ -6,12 +6,16 @@ Endpoints are plain `def`, so FastAPI runs them in its thread pool and the block
 calls never stall the event loop. Every failure is a JSON body {"error": {"code", "message"}}.
 """
 
+import json
 import logging
+import queue
+import threading
 from contextlib import asynccontextmanager
 from dataclasses import asdict
+from pathlib import Path
 
 from fastapi import FastAPI, File, Query, Request, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from qdrant_client.http.exceptions import ResponseHandlingException, UnexpectedResponse
 
 from app.api.schemas import (AskRequest, DocumentList, IngestResponse, SearchHit, SearchRequest,
@@ -88,6 +92,27 @@ def create_app(engine=None, ingestion=None) -> FastAPI:
         # never a fabricated reply.
         return JSONResponse(status_code=503 if answer.status == "error" else 200, content=_jsonable(asdict(answer)))
 
+    @app.post("/ask/stream")
+    def ask_stream(body: AskRequest, request: Request):
+        """Server-Sent Events stream: live progress events while the agent works, then the final answer."""
+        agent = request.app.state.engine.agent
+        events: queue.Queue[dict | None] = queue.Queue()
+
+        def run():
+            try:
+                answer = agent.ask(body.question, body.params, on_event=events.put)
+                events.put({"type": "answer", "answer": _jsonable(asdict(answer))})
+            finally:
+                events.put(None)
+
+        threading.Thread(target=run, daemon=True).start()
+
+        def generate():
+            while (ev := events.get()) is not None:
+                yield f"data: {json.dumps(ev)}\n\n"
+
+        return StreamingResponse(generate(), media_type="text/event-stream")
+
     @app.post("/documents", response_model=IngestResponse, status_code=201)
     def add_document(request: Request, file: UploadFile = File(...)):
         result = request.app.state.ingestion.add(file.file.read(), file.filename or "upload.txt")
@@ -96,8 +121,16 @@ def create_app(engine=None, ingestion=None) -> FastAPI:
         return IngestResponse(**asdict(result))
 
     @app.get("/documents", response_model=DocumentList)
-    def list_documents(request: Request, limit: int = Query(50, ge=1, le=500), offset: str | None = None):
-        documents, next_offset = request.app.state.engine.store.list_documents(limit, offset)
+    def list_documents(
+        request: Request,
+        limit: int = Query(50, ge=1, le=500),
+        offset: str | None = None,
+        format: str | None = None,
+        exclude_format: str | None = None,
+    ):
+        documents, next_offset = request.app.state.engine.store.list_documents(
+            limit, offset, fmt=format, exclude_format=exclude_format
+        )
         return DocumentList(documents=documents, next_offset=next_offset)
 
     @app.get("/documents/{doc_id}")
@@ -119,6 +152,16 @@ def create_app(engine=None, ingestion=None) -> FastAPI:
     @app.delete("/documents/{doc_id}", status_code=204)
     def delete_document(doc_id: str, request: Request):
         request.app.state.ingestion.delete(doc_id)
+
+    @app.get("/eval/results")
+    def eval_results(request: Request):
+        settings = getattr(request.app.state.engine, "settings", None)
+        results_dir = getattr(settings, "results_dir", None) or (Path(__file__).resolve().parents[2] / "results")
+        out = {}
+        if Path(results_dir).is_dir():
+            for path in sorted(Path(results_dir).glob("*.json")):
+                out[path.stem] = json.loads(path.read_text(encoding="utf-8"))
+        return out
 
     return app
 
