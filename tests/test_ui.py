@@ -298,3 +298,22 @@ def test_evaluation_findings_are_computed_from_the_loaded_results():
     captions = " ".join(c.value for c in at.caption)
     assert "dense-only `0.765`" in captions and "full pipeline `0.915`" in captions
     assert "31% fewer" in captions  # 300,059 vs. 433,425 chunks, from index_stats
+
+
+
+def test_entry_script_loads_like_streamlit_run():
+    """`streamlit run ui/streamlit_app.py` puts ui/ first on sys.path. A fresh interpreter set up the same
+    way must load the entry script; with the old ui/app.py it shadowed the backend's `app` package and
+    failed with a circular import (which in-process tests miss, since `app` is already imported there)."""
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    code = ("import runpy, sys; sys.path.insert(0, 'ui'); "
+            "runpy.run_path('ui/streamlit_app.py', run_name='__main__'); print('ENTRY OK')")  # fmt: skip
+    env = {**os.environ, "API_URL": "http://127.0.0.1:9"}  # unreachable: the sidebar shows a warning
+    result = subprocess.run([sys.executable, "-c", code], cwd=root, env=env, capture_output=True, text=True,
+                            timeout=120)  # fmt: skip
+    assert "ENTRY OK" in result.stdout, result.stderr[-2000:]

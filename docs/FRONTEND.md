@@ -1,7 +1,7 @@
 # FRONTEND — Streamlit UI
 
 > The user-facing app for document management and Q&A with source viewing. Decision IDs refer to
-> `GRILL-ME.md`. **Framework:** Streamlit (`ui/app.py`, D5). **Pages:** three (`st.navigation`, D11).
+> `GRILL-ME.md`. **Framework:** Streamlit (`ui/streamlit_app.py`, D5). **Pages:** three (`st.navigation`, D11).
 > The UI is a **thin client** (`ui/client.py`) — all business logic lives in the FastAPI backend
 > (`BACKEND.md`); the UI only calls its HTTP API.
 
@@ -99,7 +99,7 @@ process on the same Hugging Face Space (D4) and calls FastAPI over `API_URL` (de
 
 | Spec requirement | Satisfied by |
 |------------------|--------------|
-| Functional UI | Streamlit app (`ui/app.py`), three pages |
+| Functional UI | Streamlit app (`ui/streamlit_app.py`), three pages |
 | Document management (add/update/delete) | Page 1 (`ui/pages/documents.py`, §2) |
 | Q&A with source viewing | Page 2 (`ui/pages/ask.py`, §3), inline citations + chunk & parent-doc viewer |
 | Shows refusal / contradiction behavior | Page 2 (§3) distinct banners + gate trace |

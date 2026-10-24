@@ -176,7 +176,7 @@
     answer), single-shot mode (`AgentParams.agentic = False`) using the same citation/floor/verifier gates,
     `format` and `exclude_format` filtering on `GET /documents` (plus ensuring the `format` payload index
     on Qdrant Cloud), and `GET /eval/results` serving tracked JSON evaluation files from `results/`.
-  - **Step 2–5 (Streamlit UI):** built `ui/client.py`, `ui/app.py` (`st.navigation`), `ui/pages/documents.py`
+  - **Step 2–5 (Streamlit UI):** built `ui/client.py`, `ui/streamlit_app.py` (`st.navigation`), `ui/pages/documents.py`
     (upload, My uploads with update/delete confirmation, 50k Wikipedia corpus browser, chunk viewer),
     `ui/pages/ask.py` (config sidebar, example questions, live SSE progress, distinct answered/insufficient/
     conflict banners, source cards + parent document viewer, and expandable step/gate trace), and

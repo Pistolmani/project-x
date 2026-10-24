@@ -1,6 +1,9 @@
 """Streamlit UI entrypoint (FRONTEND.md §1): three pages via `st.navigation`.
 
-    streamlit run ui/app.py
+    streamlit run ui/streamlit_app.py
+
+Not named app.py on purpose: `streamlit run` puts ui/ first on sys.path, so a ui/app.py would shadow the
+backend's `app` package.
 
 Talks to the FastAPI backend at `API_URL` (default `http://localhost:8000`). Holds no business logic.
 """

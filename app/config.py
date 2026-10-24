@@ -38,7 +38,6 @@ class Settings(BaseSettings):
     data_dir: Path = PROJECT_ROOT / "data"
     results_dir: Path = PROJECT_ROOT / "results"
     cache_path: Path = PROJECT_ROOT / "data" / "cache.sqlite"
-    api_url: str = "http://localhost:8000"
 
 
 @lru_cache

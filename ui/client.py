@@ -11,7 +11,7 @@ from typing import Any, Iterator
 
 import httpx
 
-from app.config import get_settings
+DEFAULT_API_URL = "http://localhost:8000"
 
 
 class BackendError(RuntimeError):
@@ -24,7 +24,7 @@ class BackendError(RuntimeError):
 
 class BackendClient:
     def __init__(self, base_url: str | None = None, timeout: float = 120.0):
-        self.base_url = (base_url or os.environ.get("API_URL") or get_settings().api_url).rstrip("/")
+        self.base_url = (base_url or os.environ.get("API_URL") or DEFAULT_API_URL).rstrip("/")
         self.timeout = timeout
 
     def health(self) -> dict[str, Any]:

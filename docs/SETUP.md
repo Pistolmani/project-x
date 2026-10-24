@@ -37,7 +37,7 @@ STREAMLIT_PORT=8501
 python -m venv .venv && . .venv/bin/activate   # Windows: .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 uvicorn app.api.main:app --reload --port 8000      # backend (http://localhost:8000)
-streamlit run ui/app.py --server.port 8501         # UI (separate terminal, talks to API_URL=http://localhost:8000)
+streamlit run ui/streamlit_app.py --server.port 8501         # UI (separate terminal, talks to API_URL=http://localhost:8000)
 python -m pytest                                   # the A7 test suite (125 backend + UI AppTest tests)
 ```
 
@@ -84,7 +84,7 @@ A **Docker Space** with one entrypoint runs **both** processes:
 
 ```dockerfile
 # Dockerfile (sketch)
-CMD ["bash", "-lc", "uvicorn app.api.main:app --port 8000 & streamlit run ui/app.py --server.port 8501 --server.address 0.0.0.0"]
+CMD ["bash", "-lc", "uvicorn app.api.main:app --port 8000 & streamlit run ui/streamlit_app.py --server.port 8501 --server.address 0.0.0.0"]
 ```
 
 A Space routes public traffic to **one port only**, declared in the YAML header of the Space's
