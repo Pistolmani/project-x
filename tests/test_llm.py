@@ -48,6 +48,22 @@ def test_falls_back_to_groq_once_gemini_exhausts_its_retries():
     assert r.provider == "groq" and gemini.calls == 3 and sleeps == [1, 2]
 
 
+def test_waits_as_long_as_the_provider_asks_within_the_limit():
+    sleeps = []
+    slow = LLMError("gemini", "429", retryable=True, status=429, retry_after=46)
+    gemini = Scripted("gemini", [slow, "ok"])
+    FallbackLLM([gemini], max_wait_s=60, sleep=sleeps.append).chat("s", [])
+    assert sleeps == [46]
+
+
+def test_a_wait_longer_than_the_limit_moves_on_without_sleeping():
+    sleeps = []
+    gemini = Scripted("gemini", [LLMError("gemini", "429", retryable=True, status=429, retry_after=3600)])
+    groq = Scripted("groq", ["ok"])
+    assert FallbackLLM([gemini, groq], max_wait_s=60, sleep=sleeps.append).chat("s", []).provider == "groq"
+    assert sleeps == [] and gemini.calls == 1
+
+
 def test_non_retryable_error_moves_on_immediately():
     gemini = Scripted("gemini", [LLMError("gemini", "bad request", retryable=False, status=400)])
     groq = Scripted("groq", ["ok"])
@@ -70,9 +86,10 @@ def test_a_provider_that_cannot_replay_the_history_is_skipped():
 
 
 def test_gemini_refuses_histories_continued_by_another_provider():
-    gemini = GeminiLLM("key", "m", client=object())
-    assert gemini.can_replay([Message("user", "q"), Message("assistant", "a", provider="gemini")])
+    gemini = GeminiLLM("key", "flash", client=object())
+    assert gemini.can_replay([Message("user", "q"), Message("assistant", "a", provider="gemini/flash")])
     assert not gemini.can_replay([Message("assistant", "a", provider="groq")])
+    assert not gemini.can_replay([Message("assistant", "a", provider="gemini/flash-lite")])
 
 
 HISTORY = [

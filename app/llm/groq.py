@@ -1,6 +1,7 @@
 """Groq adapter (fallback LLM, A2): OpenAI-style chat completions with tool calls."""
 
 import json
+import re
 
 import groq
 
@@ -31,18 +32,32 @@ class GroqLLM:
                 model=self.model, messages=to_openai(system, messages), **kwargs
             )
         except (groq.RateLimitError, groq.InternalServerError) as e:
-            raise LLMError(self.name, str(e)[:300], retryable=True, status=e.status_code) from e
+            raise LLMError(self.name, str(e)[:200], True, e.status_code, _retry_after(e)) from e
         except groq.APITimeoutError as e:
             raise LLMError(self.name, "timeout", retryable=True) from e
         except groq.APIConnectionError as e:
             raise LLMError(self.name, f"connection error: {e}", retryable=True) from e
         except groq.APIStatusError as e:
-            raise LLMError(self.name, str(e)[:300], retryable=False, status=e.status_code) from e
+            # gpt-oss occasionally emits a call to a tool that does not exist ("tool_use_failed"): a
+            # generation glitch, so worth another try.
+            glitch = e.status_code == 400 and "tool_use_failed" in str(e)
+            raise LLMError(self.name, str(e)[:200], retryable=glitch, status=e.status_code) from e
 
         message = response.choices[0].message
         calls = [_parse_call(c) for c in message.tool_calls or []]
         usage = Usage(response.usage.prompt_tokens, response.usage.completion_tokens) if response.usage else Usage()
         return LLMResponse(message.content or "", calls, self.name, self.model, usage)
+
+
+def _retry_after(e: groq.APIStatusError) -> float | None:
+    header = e.response.headers.get("retry-after") if e.response is not None else None
+    if header:
+        try:
+            return float(header)
+        except ValueError:
+            pass
+    match = re.search(r"try again in ([\d.]+)s", str(e))
+    return float(match.group(1)) if match else None
 
 
 def _parse_call(call) -> ToolCall:

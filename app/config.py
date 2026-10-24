@@ -17,10 +17,14 @@ class Settings(BaseSettings):
     gemini_api_key: SecretStr | None = None
     groq_api_key: SecretStr | None = None
 
-    gemini_model: str = "gemini-3.5-flash"
+    # Free tier, measured 2026-10-24: gemini-3.5-flash allows 20 requests/day (5/min), far too few for the
+    # eval, so flash-lite investigates and flash is a second Gemini quota before Groq (1000/day, 8k tok/min).
+    gemini_model: str = "gemini-3.5-flash-lite"
+    gemini_fallback_model: str = "gemini-3.5-flash"
     groq_model: str = "openai/gpt-oss-120b"
     llm_timeout_s: float = 30
     llm_retries: int = 2  # per provider, for retryable errors only
+    llm_max_wait_s: float = 60  # longest provider-requested wait before moving to the next provider
 
     dense_model: str = "BAAI/bge-small-en-v1.5"
     sparse_model: str = "Qdrant/bm25"
@@ -32,6 +36,7 @@ class Settings(BaseSettings):
     documents_collection: str = "documents"
 
     data_dir: Path = PROJECT_ROOT / "data"
+    cache_path: Path = PROJECT_ROOT / "data" / "cache.sqlite"
 
 
 @lru_cache

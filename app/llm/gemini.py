@@ -12,9 +12,10 @@ RETRYABLE_STATUS = {408, 429, 500, 502, 503, 504}
 
 
 class GeminiLLM:
-    name = "gemini"
-
     def __init__(self, api_key: str, model: str, timeout_s: float = 30, client=None):
+        # Named per model: quotas are per model, and thought signatures are only replayed to the model
+        # that issued them.
+        self.name = f"gemini/{model}"
         self.model = model
         # The SDK's own retries are off: retry and fallback policy live in FallbackLLM.
         self.client = client or genai.Client(
@@ -43,7 +44,7 @@ class GeminiLLM:
                 model=self.model, contents=to_contents(messages), config=config
             )
         except errors.APIError as e:
-            raise LLMError(self.name, str(e)[:300], e.code in RETRYABLE_STATUS, e.code) from e
+            raise LLMError(self.name, _short(e), e.code in RETRYABLE_STATUS, e.code, _retry_delay(e)) from e
         except httpx.TimeoutException as e:
             raise LLMError(self.name, "timeout", retryable=True) from e
         except httpx.TransportError as e:
@@ -64,12 +65,20 @@ class GeminiLLM:
 
 
 def to_contents(messages: list[Message]) -> list[types.Content]:
-    """Neutral messages -> Gemini contents. Consecutive tool results become one user turn, which is
-    how Gemini expects the answers to a turn with several function calls."""
+    """Neutral messages -> Gemini contents. Consecutive user-side parts (several tool results, or tool
+    results followed by a nudge) are merged into one user turn, which is how Gemini expects the answers
+    to a turn with several function calls."""
     contents: list[types.Content] = []
+
+    def add_user_part(part: types.Part) -> None:
+        if contents and contents[-1].role == "user":
+            contents[-1].parts.append(part)
+        else:
+            contents.append(types.Content(role="user", parts=[part]))
+
     for m in messages:
         if m.role == "user":
-            contents.append(types.Content(role="user", parts=[types.Part.from_text(text=m.text)]))
+            add_user_part(types.Part.from_text(text=m.text))
         elif m.role == "assistant":
             if isinstance(m.native, types.Content):
                 contents.append(m.native)  # exact replay, thought signatures included
@@ -79,13 +88,26 @@ def to_contents(messages: list[Message]) -> list[types.Content]:
                       for c in m.tool_calls]  # fmt: skip
             contents.append(types.Content(role="model", parts=parts))
         else:
-            part = types.Part(function_response=types.FunctionResponse(
-                id=m.tool_call_id, name=m.tool_name, response=_as_object(m.result)))  # fmt: skip
-            if contents and contents[-1].role == "user" and contents[-1].parts[0].function_response:
-                contents[-1].parts.append(part)
-            else:
-                contents.append(types.Content(role="user", parts=[part]))
+            add_user_part(types.Part(function_response=types.FunctionResponse(
+                id=m.tool_call_id, name=m.tool_name, response=_as_object(m.result))))  # fmt: skip
     return contents
+
+
+def _retry_delay(e: errors.APIError) -> float | None:
+    """The RetryInfo delay a 429 carries, e.g. {"retryDelay": "46s"}."""
+    details = (e.details or {}).get("error", {}).get("details", []) if isinstance(e.details, dict) else []
+    for d in details:
+        delay = d.get("retryDelay") if isinstance(d, dict) else None
+        if isinstance(delay, str) and delay.endswith("s"):
+            try:
+                return float(delay[:-1])
+            except ValueError:
+                return None
+    return None
+
+
+def _short(e: errors.APIError) -> str:
+    return f"{e.code} {e.status}: {(e.message or '')[:160]}"
 
 
 def _as_object(result: Any) -> dict[str, Any]:
