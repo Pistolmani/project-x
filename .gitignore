@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+
+# Secrets (see .env.example)
+.env
+
+# Large local data: HF caches, downloaded datasets, built corpus, local Qdrant storage
+.cache/
+data/
+qdrant_storage/
+
+# The task brief belongs to the company that issued it; keep it out of the public repo
+_Applied AI*.pdf
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
