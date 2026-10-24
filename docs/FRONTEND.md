@@ -1,8 +1,9 @@
 # FRONTEND — Streamlit UI
 
 > The user-facing app for document management and Q&A with source viewing. Decision IDs refer to
-> `GRILL-ME.md`. **Framework:** Streamlit (D5). **Pages:** three (D11). The UI is a **thin client** — all
-> logic lives in the FastAPI backend (`BACKEND.md`); the UI only calls its HTTP API.
+> `GRILL-ME.md`. **Framework:** Streamlit (`ui/app.py`, D5). **Pages:** three (`st.navigation`, D11).
+> The UI is a **thin client** (`ui/client.py`) — all business logic lives in the FastAPI backend
+> (`BACKEND.md`); the UI only calls its HTTP API.
 
 ---
 
@@ -10,62 +11,87 @@
 
 Streamlit gives us a functional, data-app-style UI fast, which is what the spec asks for (document
 management + Q&A + source viewing) — we're graded on the *system*, not pixel polish. It runs as a second
-process on the same Hugging Face Space (D4) and calls FastAPI over `http://localhost:<port>`; the base URL
-is read from an env var so the same UI works locally and deployed.
+process on the same Hugging Face Space (D4) and calls FastAPI over `API_URL` (default
+`http://localhost:8000`); the base URL is read from env/settings so the same UI works locally and deployed.
 
 > **Defense:** *"The UI holds no business logic — it's a thin client over the same API my evaluation suite
 > uses. So what I demo is exactly what I measure."*
 
 ---
 
-## 2. Page 1 — Documents (management)
+## 2. Page 1 — Documents (`ui/pages/documents.py`)
 
-- **Upload:** drag-and-drop one or more files (PDF / HTML / Markdown / TXT — `BACKEND.md` §3.1), with a
-  selector for **chunking strategy** (fixed vs. recursive, D9) so you can ingest the same corpus both ways
-  for the comparison.
-- **List:** table of documents from `GET /documents` — filename, format, version, #chunks, created/updated,
-  chunking strategy.
-- **Update:** re-ingest a document (triggers `PUT`, version bump — `DATABASE.md` §5).
-- **Delete:** removes the document and all its chunks (`DELETE`).
-- **Status/feedback:** shows ingest progress, dedup skips ("already indexed"), and errors.
-
----
-
-## 3. Page 2 — Ask (the investigation UI)
-
-- **Question box** + a config panel (which the interviewer will love): toggle **agentic vs. off**,
-  **hybrid vs. dense-only**, chunking config, and top-k — all mapped to `/ask` parameters.
-- **Streamed answer** (D-bonus: streaming) rendered as it generates.
-- **Inline citations:** claims carry citation markers; clicking one opens the exact **source chunk** and a
-  link to its **parent document** (uses `doc_id`/`chunk_id` from the payload — `DATABASE.md` §3).
-- **Refusal / contradiction display:** when the engine refuses for *insufficient* evidence or surfaces a
-  *contradiction* (`BACKEND.md` §5.4), the UI shows that clearly (e.g. a warning banner: "Not enough
-  evidence" or "Sources conflict: A says X, B says Y") instead of a normal answer. This visibly
-  demonstrates the anti-hallucination requirement.
-- **Trace view (expandable):** shows the agent's steps — sub-questions, each `search_documents` call, and
-  the retrieved chunks — so you can **trace the RAG pipeline live in the interview** straight from the UI.
+- **Upload:** drag-and-drop one or more files (PDF / HTML / Markdown / TXT — `BACKEND.md` §3.1).
+  Each file reports `created`, `already indexed` (exact `sha256` duplicate), or the loader's error.
+  The page states the deployed strategy (**`fixed`** — 256-token windows, 32-token overlap) and points to
+  the Evaluation page for the 50k fixed-vs-recursive comparison (uploading into a non-deployed strategy
+  would put chunks where nobody searches).
+- **Two tabs (powered by `GET /documents` with `format` / `exclude_format` filters):**
+  - **My uploads:** table of user-uploaded documents (`exclude_format=wikipedia`) showing title, filename,
+    format, version, chunk count, and updated timestamp, with **View**, **Update** (re-upload → `PUT`,
+    version bump — `DATABASE.md` §5), and **Delete** (confirmation step → `DELETE`).
+  - **Corpus (50k Wikipedia):** paginated read-only browser over the 50,000 indexed Wikipedia articles
+    (`format=wikipedia`).
+- **Document view:** opens any document's chunks in reading order (`GET /documents/{doc_id}`).
 
 ---
 
-## 4. Page 3 — Evaluation dashboard
+## 3. Page 2 — Ask (`ui/pages/ask.py`)
 
-- **Run / load results:** trigger the eval suite or load the latest run.
-- **Metrics:** Recall@K, MRR, Answer Correctness, Citation Accuracy, broken down by question type
-  (simple / multi-hop / unanswerable / contradictory).
-- **Config comparison (≥2):** side-by-side charts — primarily **chunking A vs. B** (D9) and
-  **hybrid vs. dense-only** — so the "comparison of configs" deliverable is visual, not buried in a notebook.
-- **Failure-mode table:** worst cases with the retrieved chunks and the model's answer, to support the
-  "analysis of failure modes" writeup in the Evaluation Report.
+- **Question box + example questions:** one-click simple, multi-hop, and unanswerable example prompts.
+- **Sidebar config panel (mapped to `/ask` and `/ask/stream` parameters):**
+  - **Agentic multi-step loop on/off** (`agentic: true` runs the multi-hop tool loop; `agentic: false`
+    runs single-shot RAG — one search with the raw question, then one `submit_answer` call, through the
+    same post-generation gates);
+  - **Retrieval mode:** `hybrid` / `dense` / `sparse`;
+  - **Custom feature re-ranker** on/off and **cross-encoder (`bge-reranker`)** on/off;
+  - **Top-K passages**, **relevance floor** toggle + slider (calibrated default `3.92`), and **verifier**
+    toggle.
+- **Live progress streaming (`POST /ask/stream`, SSE):** streams real-time progress events as the agent
+  works (`"planning…"`, `"searching: <query>"`, `"found 8 passages"`, `"verifying…"`) before rendering
+  the verified final answer. We deliberately stream **progress rather than unverified draft tokens** so the
+  UI never flashes an unverified claim that the verifier gate subsequently retracts.
+- **Distinct displays for every outcome (`status`):**
+  - **Answered (`answered`):** grounded answer with inline `[S#]` citations and citation chips.
+  - **Not enough evidence (`insufficient`):** warning banner with the refusal reason and the list of
+    queries searched.
+  - **Sources conflict (`conflict`):** conflict banner stating both sides (`[S#]`) and the verifier's
+    explanation.
+- **Sources & parent document viewer:** each cited `[S#]` expands to show the exact chunk text, its
+  cross-encoder score, and an **Open parent document** button that loads the full article's chunks in
+  order.
+- **"How it got here" trace (expandable):** shows live stream events, every search query, each LLM/tool
+  step with provider/model, latency and token counts, and the three anti-hallucination gates (citation
+  check, relevance floor, verifier) with why each passed or failed.
+
+---
+
+## 4. Page 3 — Evaluation dashboard (`ui/pages/evaluation.py`)
+
+- **Load-only from `GET /eval/results` (`results/`):** the dashboard reads tracked JSON artifacts rather
+  than triggering ~250+ LLM calls live in the browser (which would exhaust the demo's free-tier quota).
+- **1. Retrieval & chunking comparison (50k articles):** metrics cards (50,000 docs, 300,059 fixed chunks
+  vs. 433,425 recursive chunks — 30.8% storage savings), full table and bar chart comparing `dense only`,
+  `hybrid (RRF)`, `hybrid + features`, and `full pipeline` across both chunking strategies.
+- **2. Custom RRF & feature re-ranker weight ablation:** 100-question tuning set vs. 300-question held-out
+  set showing that default feature weights beat plain RRF on held-out questions while coordinate-ascent
+  tuning on 100 questions overfit.
+- **3. End-to-end `/ask` behavioral evaluation:** renders summary metrics, per-type breakdown (simple,
+  multi-hop, unanswerable, contradictory), and the failure-mode table once Phase 4 writes
+  `results/behavioral_eval.json`.
 
 ---
 
 ## 5. State, errors, and UX principles
 
 - **Stateless UI:** page state is kept in `st.session_state`; the source of truth is always the backend.
-- **Graceful errors:** backend errors (`BACKEND.md` §5.5) render as friendly messages; the UI never shows
-  a fabricated answer — if the engine refuses, the UI respects that.
+- **Graceful errors (`ui/client.py`):** backend errors (`BACKEND.md` §5.5) and timeouts become `BackendError`
+  messages rendered cleanly in the UI; the UI never fabricates an answer.
 - **Honesty first:** refusals and contradictions are first-class UI states, not edge cases — this is the
   product's whole point.
+- **Tested (`tests/test_ui.py`):** Streamlit `AppTest` suite covers all three pages, config toggles,
+  document view/delete confirmation, and `answered` / `insufficient` / `conflict` states against a fake
+  client.
 
 ---
 
@@ -73,9 +99,9 @@ is read from an env var so the same UI works locally and deployed.
 
 | Spec requirement | Satisfied by |
 |------------------|--------------|
-| Functional UI | Streamlit app, three pages |
-| Document management (add/update/delete) | Page 1 (§2) |
-| Q&A with source viewing | Page 2 (§3), inline citations + source chunk viewer |
-| Shows refusal / contradiction behavior | Page 2 (§3) |
-| Config comparison + failure modes (visual) | Page 3 (§4) |
-| Streaming (bonus) | Page 2 streamed answer (§3) |
+| Functional UI | Streamlit app (`ui/app.py`), three pages |
+| Document management (add/update/delete) | Page 1 (`ui/pages/documents.py`, §2) |
+| Q&A with source viewing | Page 2 (`ui/pages/ask.py`, §3), inline citations + chunk & parent-doc viewer |
+| Shows refusal / contradiction behavior | Page 2 (§3) distinct banners + gate trace |
+| Config comparison + failure modes (visual) | Page 3 (`ui/pages/evaluation.py`, §4) |
+| Streaming (bonus) | Page 2 live SSE progress stream (`POST /ask/stream`, §3) |

@@ -36,9 +36,9 @@ STREAMLIT_PORT=8501
 ```
 python -m venv .venv && . .venv/bin/activate   # Windows: .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-uvicorn app.api.main:app --reload --port 8000      # backend
-streamlit run ui/app.py                        # UI (separate terminal)
-pytest                                         # the A7 test suite
+uvicorn app.api.main:app --reload --port 8000      # backend (http://localhost:8000)
+streamlit run ui/app.py --server.port 8501         # UI (separate terminal, talks to API_URL=http://localhost:8000)
+python -m pytest                                   # the A7 test suite (125 backend + UI AppTest tests)
 ```
 
 ---

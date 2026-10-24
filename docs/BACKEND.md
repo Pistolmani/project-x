@@ -277,13 +277,15 @@ calls**, which can exhaust Gemini's free tier. Mitigations, by design:
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| `POST` | `/documents` | Upload + ingest a file (multipart). Body: file, chunking_strategy. |
-| `GET`  | `/documents` | List documents (paginated) from the `documents` collection. |
+| `POST` | `/documents` | Upload + ingest a file (multipart). Body: file. |
+| `GET`  | `/documents` | List documents (paginated, optional `format` / `exclude_format` filter) from `documents`. |
 | `GET`  | `/documents/{doc_id}` | Fetch one document + its chunks. |
 | `PUT`  | `/documents/{doc_id}` | Re-ingest / update (version bump). |
 | `DELETE` | `/documents/{doc_id}` | Delete document + its chunks. |
 | `POST` | `/search` | Raw retrieval (ranked chunks). Powers the LLM-free retrieval eval + debugging. |
-| `POST` | `/ask` | Full agentic RAG. Returns answer, citations, searched queries, gates, trace, usage (not streamed yet). |
+| `POST` | `/ask` | Full agentic or single-shot RAG (`agentic: true/false`). Returns answer, citations, searched queries, gates, trace, usage. |
+| `POST` | `/ask/stream` | SSE stream emitting live progress events (`searching`, `found`, `verifying`, …) then the final `/ask` answer. |
+| `GET`  | `/eval/results` | Serves tracked JSON evaluation artifacts from `results/` for the UI dashboard. |
 | `GET`  | `/health` | Liveness + model/DB readiness. |
 
 Config knobs (chunking strategy, RRF weights, top-k, which rerank stages are on, relevance floor, agentic

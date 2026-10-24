@@ -163,3 +163,34 @@
 ---
 
 <!-- Add the next session entry below this line -->
+
+### 2026-10-24 — Session 6: Phase 3 (Streamlit UI & backend streaming/single-shot additions)
+
+**What the AI did**
+- Claude Code (Claude Opus 5.5) drafted the 7-step Phase 3 plan and four recommendations (progress
+  streaming rather than draft-token streaming so the verifier never retracts already-displayed text;
+  dropping the upload chunking selector because Qdrant Cloud indexes only `fixed`; adding a single-shot
+  `agentic: false` mode for `/ask`; pinning `streamlit`).
+- Cursor agent (Gemini 4 Argon) implemented the approved Phase 3 plan:
+  - **Step 1 (Backend additions):** added `POST /ask/stream` (Server-Sent Events progress stream + final
+    answer), single-shot mode (`AgentParams.agentic = False`) using the same citation/floor/verifier gates,
+    `format` and `exclude_format` filtering on `GET /documents` (plus ensuring the `format` payload index
+    on Qdrant Cloud), and `GET /eval/results` serving tracked JSON evaluation files from `results/`.
+  - **Step 2–5 (Streamlit UI):** built `ui/client.py`, `ui/app.py` (`st.navigation`), `ui/pages/documents.py`
+    (upload, My uploads with update/delete confirmation, 50k Wikipedia corpus browser, chunk viewer),
+    `ui/pages/ask.py` (config sidebar, example questions, live SSE progress, distinct answered/insufficient/
+    conflict banners, source cards + parent document viewer, and expandable step/gate trace), and
+    `ui/pages/evaluation.py` (50k retrieval comparison, weight-tuning ablation, and Phase 4 behavioral eval
+    slot).
+  - **Step 6 (Tests & live verification):** added unit tests in `tests/test_agent.py`, `tests/test_api.py`,
+    and Streamlit `AppTest` tests in `tests/test_ui.py` (125 tests total, all passing), and verified
+    `/health`, `/documents` format filters, `/eval/results`, and `/ask/stream` against the live Qdrant
+    Cloud cluster and Gemini LLM.
+
+**What the human decided / owns**
+- Approved the Phase 3 plan and all four recommendations ("go").
+
+**Tools / models used**
+- Claude Code (Claude Opus 5.5) — Phase 3 plan.
+- Cursor agent (Gemini 4 Argon) — Phase 3 implementation, tests, and live verification.
+
