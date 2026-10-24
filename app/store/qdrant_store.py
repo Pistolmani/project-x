@@ -27,9 +27,11 @@ def stable_id(key: str) -> str:
     return str(uuid.uuid5(_NAMESPACE, key))
 
 
-def chunk_point_id(doc_id: str, strategy: str, index: int) -> str:
+def chunk_point_id(doc_id: str, strategy: str, index: int, version: int = 1) -> str:
     # The strategy is part of the key: both strategies' chunks of one document share the collection.
-    return stable_id(f"{doc_id}:{strategy}:{index}")
+    # From version 2 the version is too, so an update can insert its chunks before deleting the old ones.
+    key = f"{doc_id}:{strategy}:{index}" if version == 1 else f"{doc_id}:{strategy}:{index}:v{version}"
+    return stable_id(key)
 
 
 @dataclass(frozen=True)
@@ -40,6 +42,7 @@ class ChunkPoint:
     dense: list[float]
     sparse: tuple[list[int], list[float]]
     payload: dict[str, Any]
+    version: int = 1
 
 
 class QdrantStore:
@@ -135,7 +138,7 @@ class QdrantStore:
     def upsert_chunks(self, chunks: list[ChunkPoint]) -> None:
         points = [
             models.PointStruct(
-                id=chunk_point_id(c.doc_id, c.strategy, c.index),
+                id=chunk_point_id(c.doc_id, c.strategy, c.index, c.version),
                 vector={
                     DENSE: c.dense,
                     SPARSE: models.SparseVector(indices=c.sparse[0], values=c.sparse[1]),
@@ -187,6 +190,33 @@ class QdrantStore:
             return {}
         responses = self.client.query_batch_points(self.chunks, requests=requests)
         return {name: response.points for name, response in zip(names, responses)}
+
+    def get_chunks(self, doc_id: str, strategy: str, limit: int = 1000) -> list[models.Record]:
+        """One document's chunks of one strategy, in reading order."""
+        flt = models.Filter(must=[
+            models.FieldCondition(key="doc_id", match=models.MatchValue(value=doc_id)),
+            models.FieldCondition(key="chunking_strategy", match=models.MatchValue(value=strategy)),
+        ])  # fmt: skip
+        points, _ = self.client.scroll(self.chunks, scroll_filter=flt, limit=limit, with_payload=True)
+        return sorted(points, key=lambda p: p.payload["chunk_index"])
+
+    def find_by_hash(self, sha256: str) -> dict[str, Any] | None:
+        """The registry record of a document with this content hash, if any (exact dedup)."""
+        flt = models.Filter(must=[models.FieldCondition(key="sha256", match=models.MatchValue(value=sha256))])
+        points, _ = self.client.scroll(self.documents, scroll_filter=flt, limit=1, with_payload=True)
+        return points[0].payload if points else None
+
+    def list_documents(self, limit: int = 50, offset: str | None = None) -> tuple[list[dict[str, Any]], str | None]:
+        points, next_offset = self.client.scroll(self.documents, limit=limit, offset=offset, with_payload=True)
+        return [p.payload for p in points], (str(next_offset) if next_offset is not None else None)
+
+    def delete_old_versions(self, doc_id: str, keep_version: int) -> None:
+        """Remove a document's chunks from every version except `keep_version` (the update's last step)."""
+        flt = models.Filter(
+            must=[models.FieldCondition(key="doc_id", match=models.MatchValue(value=doc_id))],
+            must_not=[models.FieldCondition(key="version", match=models.MatchValue(value=keep_version))],
+        )
+        self.client.delete(self.chunks, points_selector=models.FilterSelector(filter=flt))
 
     def delete_document(self, doc_id: str) -> None:
         by_doc = models.Filter(
