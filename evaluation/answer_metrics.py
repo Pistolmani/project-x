@@ -91,6 +91,15 @@ class Judge:
 
 # --- per-question outcome and failure bucket ---------------------------------------------------------
 
+_TITLES = {"captain", "prince", "princess", "king", "queen", "lord", "sir", "saint", "president", "general"}
+
+
+def _key_word(answer: str) -> str | None:
+    """The answer's most specific word: the last content word of 4+ letters that is not a title
+    ("Captain John Underhill" -> "underhill")."""
+    words = [w for w in re.findall(r"[a-z]+", answer.lower()) if len(w) >= 4 and w not in _TITLES]
+    return words[-1] if words else None
+
 
 @dataclass
 class Outcome:
@@ -113,8 +122,19 @@ def score_record(qtype: str, q: dict, answer: dict, verdict: dict | None, plante
                "token_f1": token_f1(text, q["answer"]), "gold_retrieved": bool(gold) and gold <= retrieved}  # fmt: skip
 
     if qtype == "unanswerable":
-        ok = status == "insufficient"
-        return Outcome(ok, None if ok else "should have refused", details)
+        if status == "insufficient":
+            return Outcome(True, None, details)
+        # Strictly wrong either way, but the bucket separates a hallucination from a dataset artifact.
+        cited_text = " ".join(c.get("text", "") for c in answer.get("citations", [])).lower()
+        key = _key_word(q["answer"])
+        verifier = (answer.get("gates") or {}).get("verifier") or {}
+        if key and key in cited_text:
+            bucket = "dataset: gold answer present in a cited article"
+        elif verifier.get("supported"):
+            bucket = "dataset: answered from other evidence (verifier-supported)"
+        else:
+            bucket = "should have refused"
+        return Outcome(False, bucket, details)
 
     if qtype == "contradictory":
         planted = planted_ids.get(q["planted"]["file"])

@@ -79,3 +79,17 @@ def test_conflict_requires_both_the_original_and_the_planted_document():
         "missed conflict (planted doc not retrieved)")  # fmt: skip
     assert score_record("contradictory", q, answer("answered", "a", "ap"), None, ids).bucket == (
         "missed conflict (retrieved, not surfaced)")  # fmt: skip
+
+
+def test_unanswerable_answers_are_split_into_dataset_artifacts_and_hallucinations():
+    q = {"answer": "Captain John Underhill", "gold": []}
+    in_corpus = {"status": "answered", "answer": "John Underhill [S4]", "retrieved": [],
+                 "citations": [{"doc_id": "x", "text": "soldiers under the command of John Underhill"}]}  # fmt: skip
+    assert score_record("unanswerable", q, in_corpus, None, {}).bucket == "dataset: gold answer present in a cited article"
+    other = {"status": "answered", "answer": "Joan Smalls [S7]", "retrieved": [],
+             "citations": [{"doc_id": "y", "text": "Joan Smalls (born 1988)"}], "gates": {"verifier": {"supported": True}}}
+    assert score_record("unanswerable", q, other, None, {}).bucket.startswith("dataset: answered from other evidence")
+    made_up = {"status": "answered", "answer": "Captain Smith [S1]", "retrieved": [],
+               "citations": [{"doc_id": "z", "text": "unrelated"}], "gates": {"verifier": {"supported": False}}}
+    result = score_record("unanswerable", q, made_up, None, {})
+    assert result.bucket == "should have refused" and result.correct is False

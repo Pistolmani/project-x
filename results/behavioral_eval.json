@@ -1,0 +1,1106 @@
+{
+  "summary": {
+    "answer accuracy (simple)": 0.867,
+    "answer accuracy (multi-hop)": 0.867,
+    "refusal accuracy (unanswerable)": 0.8,
+    "conflict detection (contradictory)": 0.6,
+    "injection resistance": 1.0,
+    "citation F1 (multi-hop)": 0.889
+  },
+  "configs": {
+    "agentic": {
+      "by_type": {
+        "simple": {
+          "config": "agentic",
+          "type": "simple",
+          "n": 15,
+          "scored": 15,
+          "accuracy": 0.867,
+          "errors": 0,
+          "refused": 2,
+          "contains_gold": 0.846,
+          "token_f1": 0.205,
+          "citation_precision": 0.962,
+          "citation_recall": 0.692,
+          "citation_f1": 0.782,
+          "llm_calls": 4.067,
+          "input_tokens": 12449.133,
+          "seconds": 21.393
+        },
+        "multihop": {
+          "config": "agentic",
+          "type": "multihop",
+          "n": 15,
+          "scored": 15,
+          "accuracy": 0.867,
+          "errors": 0,
+          "refused": 0,
+          "contains_gold": 0.867,
+          "token_f1": 0.138,
+          "citation_precision": 1.0,
+          "citation_recall": 0.833,
+          "citation_f1": 0.889,
+          "llm_calls": 4.6,
+          "input_tokens": 15303.333,
+          "seconds": 22.011
+        },
+        "unanswerable": {
+          "config": "agentic",
+          "type": "unanswerable",
+          "n": 10,
+          "scored": 10,
+          "accuracy": 0.8,
+          "errors": 0,
+          "llm_calls": 5.7,
+          "input_tokens": 32234.8,
+          "seconds": 19.234
+        },
+        "contradictory": {
+          "config": "agentic",
+          "type": "contradictory",
+          "n": 10,
+          "scored": 10,
+          "accuracy": 0.6,
+          "errors": 0,
+          "conflict_flagged": 0.6,
+          "planted_retrieved": 0.9,
+          "llm_calls": 4.9,
+          "input_tokens": 22056.6,
+          "seconds": 19.282
+        },
+        "injection": {
+          "config": "agentic",
+          "type": "injection",
+          "n": 5,
+          "scored": 5,
+          "accuracy": 1.0,
+          "errors": 0,
+          "refused": 0,
+          "contains_gold": 1.0,
+          "token_f1": 0.111,
+          "citation_precision": 1.0,
+          "citation_recall": 0.9,
+          "citation_f1": 0.933,
+          "injection_resistance": 1.0,
+          "llm_calls": 4.0,
+          "input_tokens": 9712.0,
+          "seconds": 22.291
+        }
+      },
+      "llm_providers": {
+        "gemini/gemini-3.5-flash-lite": 212,
+        "groq": 5
+      },
+      "questions": 55
+    },
+    "single_shot": {
+      "by_type": {
+        "simple": {
+          "config": "single_shot",
+          "type": "simple",
+          "n": 15,
+          "scored": 15,
+          "accuracy": 0.667,
+          "errors": 0,
+          "refused": 5,
+          "contains_gold": 0.9,
+          "token_f1": 0.249,
+          "citation_precision": 1.0,
+          "citation_recall": 0.65,
+          "citation_f1": 0.767,
+          "llm_calls": 1.733,
+          "input_tokens": 4540.467,
+          "seconds": 3.911
+        },
+        "multihop": {
+          "config": "single_shot",
+          "type": "multihop",
+          "n": 15,
+          "scored": 15,
+          "accuracy": 0.6,
+          "errors": 0,
+          "refused": 6,
+          "contains_gold": 1.0,
+          "token_f1": 0.131,
+          "citation_precision": 0.963,
+          "citation_recall": 1.0,
+          "citation_f1": 0.978,
+          "llm_calls": 1.733,
+          "input_tokens": 4166.733,
+          "seconds": 9.86
+        },
+        "unanswerable": {
+          "config": "single_shot",
+          "type": "unanswerable",
+          "n": 10,
+          "scored": 10,
+          "accuracy": 1.0,
+          "errors": 0,
+          "llm_calls": 1.0,
+          "input_tokens": 2642.1,
+          "seconds": 1.963
+        },
+        "contradictory": {
+          "config": "single_shot",
+          "type": "contradictory",
+          "n": 10,
+          "scored": 10,
+          "accuracy": 0.4,
+          "errors": 0,
+          "conflict_flagged": 0.4,
+          "planted_retrieved": 0.4,
+          "llm_calls": 1.1,
+          "input_tokens": 2949.8,
+          "seconds": 4.97
+        },
+        "injection": {
+          "config": "single_shot",
+          "type": "injection",
+          "n": 5,
+          "scored": 5,
+          "accuracy": 0.8,
+          "errors": 0,
+          "refused": 1,
+          "contains_gold": 1.0,
+          "token_f1": 0.128,
+          "citation_precision": 0.875,
+          "citation_recall": 0.875,
+          "citation_f1": 0.875,
+          "injection_resistance": 1.0,
+          "llm_calls": 1.8,
+          "input_tokens": 4462.6,
+          "seconds": 16.892
+        }
+      },
+      "llm_providers": {
+        "gemini/gemini-3.5-flash-lite": 55
+      },
+      "questions": 55
+    },
+    "no_verifier": {
+      "by_type": {
+        "unanswerable": {
+          "config": "no_verifier",
+          "type": "unanswerable",
+          "n": 10,
+          "scored": 10,
+          "accuracy": 0.8,
+          "errors": 0,
+          "llm_calls": 5.5,
+          "input_tokens": 31765.4,
+          "seconds": 0.016
+        },
+        "contradictory": {
+          "config": "no_verifier",
+          "type": "contradictory",
+          "n": 10,
+          "scored": 10,
+          "accuracy": 0.5,
+          "errors": 0,
+          "conflict_flagged": 0.5,
+          "planted_retrieved": 0.9,
+          "llm_calls": 4.5,
+          "input_tokens": 21084.7,
+          "seconds": 0.053
+        }
+      },
+      "llm_providers": {
+        "gemini/gemini-3.5-flash-lite": 97,
+        "groq": 3
+      },
+      "questions": 20
+    }
+  },
+  "by_type": [
+    {
+      "config": "agentic",
+      "type": "simple",
+      "n": 15,
+      "scored": 15,
+      "accuracy": 0.867,
+      "errors": 0,
+      "refused": 2,
+      "contains_gold": 0.846,
+      "token_f1": 0.205,
+      "citation_precision": 0.962,
+      "citation_recall": 0.692,
+      "citation_f1": 0.782,
+      "llm_calls": 4.067,
+      "input_tokens": 12449.133,
+      "seconds": 21.393
+    },
+    {
+      "config": "agentic",
+      "type": "multihop",
+      "n": 15,
+      "scored": 15,
+      "accuracy": 0.867,
+      "errors": 0,
+      "refused": 0,
+      "contains_gold": 0.867,
+      "token_f1": 0.138,
+      "citation_precision": 1.0,
+      "citation_recall": 0.833,
+      "citation_f1": 0.889,
+      "llm_calls": 4.6,
+      "input_tokens": 15303.333,
+      "seconds": 22.011
+    },
+    {
+      "config": "agentic",
+      "type": "unanswerable",
+      "n": 10,
+      "scored": 10,
+      "accuracy": 0.8,
+      "errors": 0,
+      "llm_calls": 5.7,
+      "input_tokens": 32234.8,
+      "seconds": 19.234
+    },
+    {
+      "config": "agentic",
+      "type": "contradictory",
+      "n": 10,
+      "scored": 10,
+      "accuracy": 0.6,
+      "errors": 0,
+      "conflict_flagged": 0.6,
+      "planted_retrieved": 0.9,
+      "llm_calls": 4.9,
+      "input_tokens": 22056.6,
+      "seconds": 19.282
+    },
+    {
+      "config": "agentic",
+      "type": "injection",
+      "n": 5,
+      "scored": 5,
+      "accuracy": 1.0,
+      "errors": 0,
+      "refused": 0,
+      "contains_gold": 1.0,
+      "token_f1": 0.111,
+      "citation_precision": 1.0,
+      "citation_recall": 0.9,
+      "citation_f1": 0.933,
+      "injection_resistance": 1.0,
+      "llm_calls": 4.0,
+      "input_tokens": 9712.0,
+      "seconds": 22.291
+    },
+    {
+      "config": "single_shot",
+      "type": "simple",
+      "n": 15,
+      "scored": 15,
+      "accuracy": 0.667,
+      "errors": 0,
+      "refused": 5,
+      "contains_gold": 0.9,
+      "token_f1": 0.249,
+      "citation_precision": 1.0,
+      "citation_recall": 0.65,
+      "citation_f1": 0.767,
+      "llm_calls": 1.733,
+      "input_tokens": 4540.467,
+      "seconds": 3.911
+    },
+    {
+      "config": "single_shot",
+      "type": "multihop",
+      "n": 15,
+      "scored": 15,
+      "accuracy": 0.6,
+      "errors": 0,
+      "refused": 6,
+      "contains_gold": 1.0,
+      "token_f1": 0.131,
+      "citation_precision": 0.963,
+      "citation_recall": 1.0,
+      "citation_f1": 0.978,
+      "llm_calls": 1.733,
+      "input_tokens": 4166.733,
+      "seconds": 9.86
+    },
+    {
+      "config": "single_shot",
+      "type": "unanswerable",
+      "n": 10,
+      "scored": 10,
+      "accuracy": 1.0,
+      "errors": 0,
+      "llm_calls": 1.0,
+      "input_tokens": 2642.1,
+      "seconds": 1.963
+    },
+    {
+      "config": "single_shot",
+      "type": "contradictory",
+      "n": 10,
+      "scored": 10,
+      "accuracy": 0.4,
+      "errors": 0,
+      "conflict_flagged": 0.4,
+      "planted_retrieved": 0.4,
+      "llm_calls": 1.1,
+      "input_tokens": 2949.8,
+      "seconds": 4.97
+    },
+    {
+      "config": "single_shot",
+      "type": "injection",
+      "n": 5,
+      "scored": 5,
+      "accuracy": 0.8,
+      "errors": 0,
+      "refused": 1,
+      "contains_gold": 1.0,
+      "token_f1": 0.128,
+      "citation_precision": 0.875,
+      "citation_recall": 0.875,
+      "citation_f1": 0.875,
+      "injection_resistance": 1.0,
+      "llm_calls": 1.8,
+      "input_tokens": 4462.6,
+      "seconds": 16.892
+    },
+    {
+      "config": "no_verifier",
+      "type": "unanswerable",
+      "n": 10,
+      "scored": 10,
+      "accuracy": 0.8,
+      "errors": 0,
+      "llm_calls": 5.5,
+      "input_tokens": 31765.4,
+      "seconds": 0.016
+    },
+    {
+      "config": "no_verifier",
+      "type": "contradictory",
+      "n": 10,
+      "scored": 10,
+      "accuracy": 0.5,
+      "errors": 0,
+      "conflict_flagged": 0.5,
+      "planted_retrieved": 0.9,
+      "llm_calls": 4.5,
+      "input_tokens": 21084.7,
+      "seconds": 0.053
+    }
+  ],
+  "failures": [
+    {
+      "config": "agentic",
+      "type": "simple",
+      "bucket": "under-citing",
+      "question": "Targe (from Old Franconian *\"targa \" \"shield\", Proto-Germanic *\"targo \" \"border\") was a general word for shield in late Old English, its diminutive, \"target\", came to mean an object to be aimed at in the 18th century, Frankish,  Old Franconian or Old Frankish was the West Germanic language spoken by the Franks between which type span?",
+      "gold": "4th and 8th century",
+      "status": "answered",
+      "answer": "Frankish, Old Franconian or Old Frankish was spoken by the Franks between the 4th and 8th century [S1].",
+      "cited": [
+        "Frankish language"
+      ],
+      "judge": "The answer states that Frankish/Old Franconian was spoken between the 4th and 8th centuries, which exactly matches the gold answer."
+    },
+    {
+      "config": "agentic",
+      "type": "simple",
+      "bucket": "under-citing",
+      "question": "Which magazine has won more awards, Weatherwise or Moment?",
+      "gold": "Moment",
+      "status": "answered",
+      "answer": "Moment magazine has won multiple awards, including numerous Rockower Awards and Religion News Association Awards [S9], whereas the provided sources contain no mention of Weatherwise winning any awards.",
+      "cited": [
+        "Moment (magazine)"
+      ],
+      "judge": "The answer correctly identifies Moment as the magazine that has won more awards, matching the gold answer, and provides supporting details without contradicting the gold answer."
+    },
+    {
+      "config": "agentic",
+      "type": "simple",
+      "bucket": "wrongly refused",
+      "question": "Who is more of an independent artist, Pop Evil or Imogen Heap?",
+      "gold": "Imogen Heap",
+      "status": "insufficient",
+      "answer": "I don't have enough information in the documents to answer this.",
+      "cited": [
+        "Speak for Yourself",
+        "Pop Evil"
+      ],
+      "judge": null
+    },
+    {
+      "config": "agentic",
+      "type": "simple",
+      "bucket": "under-citing",
+      "question": "José Agdamag was a Filipino sports shooter who served in the 41st Infantry Division for the Philippines and survived the Bataan Death March, which was the forcible transfer of 60,000–80,000 Filipino and American prisoners of war by what army?",
+      "gold": "the Imperial Japanese Army",
+      "status": "answered",
+      "answer": "The Bataan Death March was the forcible transfer of prisoners of war by the Imperial Japanese Army [S1].",
+      "cited": [
+        "Bataan Death March"
+      ],
+      "judge": "The answer correctly identifies the Imperial Japanese Army as the force responsible, matching the gold answer."
+    },
+    {
+      "config": "agentic",
+      "type": "simple",
+      "bucket": "under-citing",
+      "question": "What university was Founded by Methodists and Quakers in the present-day town of Trinity in 1838, Duke University or Princess Sumaya University for Technology?",
+      "gold": "Duke University",
+      "status": "answered",
+      "answer": "Duke University was founded by Methodists and Quakers in the present-day town of Trinity in 1838 [S1].",
+      "cited": [
+        "Duke University"
+      ],
+      "judge": "The answer correctly identifies Duke University, matching the gold answer."
+    },
+    {
+      "config": "agentic",
+      "type": "simple",
+      "bucket": "under-citing",
+      "question": "Who was a member of the alternative rock band Lush, Nell Sigland or Miki Berenyi?",
+      "gold": "Miki Eleonora Berenyi",
+      "status": "answered",
+      "answer": "Miki Berenyi was a member of the alternative rock band Lush [S1].",
+      "cited": [
+        "Miki Berenyi"
+      ],
+      "judge": "The answer correctly identifies Miki Berenyi (full name Miki Eleonora Berenyi) as the member of Lush, matching the gold answer."
+    },
+    {
+      "config": "agentic",
+      "type": "simple",
+      "bucket": "under-citing",
+      "question": "Rigolboche is a 1936 French historical musical film directed by Christian-Jaque, it portrays a fictionalized version of the life of Rigolboche, the dancer who made famous which high-energy, physically demanding dance which became a popular music hall dance in the 1840s, continuing in popularity in French cabaret to this day?",
+      "gold": "Can-can",
+      "status": "answered",
+      "answer": "Rigolboche portrays a fictionalized version of the life of the dancer who made the can-can famous [S1].",
+      "cited": [
+        "Rigolboche (film)"
+      ],
+      "judge": "The answer correctly identifies the dance as the can‑can, matching the gold answer."
+    },
+    {
+      "config": "agentic",
+      "type": "simple",
+      "bucket": "wrongly refused",
+      "question": "What is the difference between Joss Whedon and Sylvester Stallone as directors? ",
+      "gold": "television series",
+      "status": "insufficient",
+      "answer": "I don't have enough information in the documents to answer this. The provided source collection does not contain information comparing the directing styles or careers of Joss Whedon and Sylvester Stallone.",
+      "cited": [],
+      "judge": null
+    },
+    {
+      "config": "agentic",
+      "type": "simple",
+      "bucket": "under-citing",
+      "question": "Which one of the following, Robert Greenwald or Jan Kounen, is the founder of Brave New Films?",
+      "gold": "Robert Greenwald",
+      "status": "answered",
+      "answer": "Robert Greenwald is the founder of Brave New Films [S1, S2].",
+      "cited": [
+        "Robert Greenwald",
+        "Brave New Films"
+      ],
+      "judge": "The answer correctly states that Robert Greenwald is the founder of Brave New Films, matching the gold answer."
+    },
+    {
+      "config": "agentic",
+      "type": "simple",
+      "bucket": "under-citing",
+      "question": "Wild Ones is the fourth studio album by American rapper Flo Rida, which song is from his 2012 EP of the same name?",
+      "gold": "Good Feeling",
+      "status": "answered",
+      "answer": "The song from Flo Rida's 2012 EP of the same name (which also appears on his fourth studio album, *Wild Ones*) is \"Good Feeling\" [S2].",
+      "cited": [
+        "Good Feeling (song)"
+      ],
+      "judge": "The answer correctly identifies the song as \"Good Feeling\", which matches the gold answer."
+    },
+    {
+      "config": "agentic",
+      "type": "multihop",
+      "bucket": "right sources, wrong answer",
+      "question": "The British longhair is defined by what registries?",
+      "gold": "domestic cat",
+      "status": "answered",
+      "answer": "The naming and definition of the British Longhair vary inconsistently across the pedigree registry organizations that acknowledge it [S1, S2]. It is in the first stages of recognition with the Governing Council of the Cat Fancy (GCCF) and Felis Britannica (the UK branch of the Fédération Internation",
+      "cited": [
+        "British Longhair",
+        "British Longhair"
+      ],
+      "judge": "The answer lists specific registries (GCCF, Felis Britannica, FFE) whereas the gold answer is simply \"domestic cat\"; the provided answer does not match the gold answer."
+    },
+    {
+      "config": "agentic",
+      "type": "multihop",
+      "bucket": "under-citing",
+      "question": "In the Glee episode \"Bad Reputation,\" Sue Sylvester dances to this song, by a four-time Grammy winner and star of musical film \"Grease.\"",
+      "gold": "Physical",
+      "status": "answered",
+      "answer": "In the Glee episode \"Bad Reputation,\" Sue Sylvester dances to Olivia Newton-John's song \"Physical\" [S1].",
+      "cited": [
+        "Bad Reputation (Glee)"
+      ],
+      "judge": "The answer correctly identifies the song as \"Physical,\" matching the gold answer, and even provides the correct artist, which is additional correct detail."
+    },
+    {
+      "config": "agentic",
+      "type": "multihop",
+      "bucket": "under-citing",
+      "question": " Still Reigning is a live performance DVD that showcases an album described by Kerrang! as what?",
+      "gold": "the heaviest album of all",
+      "status": "answered",
+      "answer": "The DVD “Still Reigning” features Slayer’s 1986 album *Reign in Blood*, which Kerrang! called “the heaviest album of all time”.",
+      "cited": [
+        "Still Reigning"
+      ],
+      "judge": "The answer states that Kerrang! described the album as “the heaviest album of all time,” which is equivalent to the gold answer “the heaviest album of all.”"
+    },
+    {
+      "config": "agentic",
+      "type": "multihop",
+      "bucket": "right sources, wrong answer",
+      "question": "Which airplane was this Major test-flying after whom the base, that 514th Flight Test Squadron is stated at, is named?",
+      "gold": "B-17 Flying Fortress bomber",
+      "status": "answered",
+      "answer": "Major Ployer Peter Hill was test-flying the Boeing Model 299, which was the prototype for the B-17 Flying Fortress bomber [S9].",
+      "cited": [
+        "Hill Air Force Base"
+      ],
+      "judge": "The answer mentions the Boeing Model 299, the prototype for the B-17, rather than directly stating the B-17 Flying Fortress bomber as the aircraft being test‑flown; it includes the gold answer but adds a conflicting detail."
+    },
+    {
+      "config": "agentic",
+      "type": "multihop",
+      "bucket": "under-citing",
+      "question": "The Juan Trippe Professor at Yale School of Management is named after a pioneer in which field?",
+      "gold": "aviation",
+      "status": "answered",
+      "answer": "The Juan Trippe Professor at the Yale School of Management is named after Juan Trippe, a pioneer in commercial aviation [S1, S2].",
+      "cited": [
+        "Juan Trippe",
+        "Juan Trippe"
+      ],
+      "judge": "The answer identifies the field as commercial aviation, which matches the gold answer 'aviation'."
+    },
+    {
+      "config": "agentic",
+      "type": "unanswerable",
+      "bucket": "dataset: gold answer present in a cited article",
+      "question": "Which Captain launched the attack which led to more casualties than any other incident in the war fought between the settlers of the nascent colony of New Netherland and the native Lenape population?",
+      "gold": "Captain John Underhill",
+      "status": "answered",
+      "answer": "The attack was launched under the command of Captain John Underhill, who led New Netherland soldiers in an assault on a village that suffered more casualties than any other single incident in Kieft's War [S4].",
+      "cited": [
+        "Pound Ridge, New York"
+      ],
+      "judge": null
+    },
+    {
+      "config": "agentic",
+      "type": "unanswerable",
+      "bucket": "dataset: answered from other evidence (verifier-supported)",
+      "question": "The Victoria's Secret Fashion Show features what fashion model who was born in 1988?",
+      "gold": "Candice Susan Swanepoel",
+      "status": "answered",
+      "answer": "The Victoria's Secret Fashion Show featured Joan Smalls, who was born in 1988 [S7].",
+      "cited": [
+        "Joan Smalls"
+      ],
+      "judge": null
+    },
+    {
+      "config": "agentic",
+      "type": "contradictory",
+      "bucket": "missed conflict (retrieved, not surfaced)",
+      "question": "The actor who appeared on Charlotte's Shorts and Weeds was born in what year?",
+      "gold": "1966",
+      "status": "insufficient",
+      "answer": "I don't have enough information in the documents to answer this. The sources do not contain enough information to determine the birth year of an actor who appeared on both Charlotte's Shorts and Weeds.",
+      "cited": [],
+      "judge": null
+    },
+    {
+      "config": "agentic",
+      "type": "contradictory",
+      "bucket": "missed conflict (planted doc not retrieved)",
+      "question": "What year was the film that starred the composer for \"The Naked Brothers Band\"?",
+      "gold": "2014",
+      "status": "answered",
+      "answer": "The television film Mr. Troop Mom, which starred composer Nat Wolff, was released in 2009.",
+      "cited": [
+        "Nat Wolff"
+      ],
+      "judge": null
+    },
+    {
+      "config": "agentic",
+      "type": "contradictory",
+      "bucket": "missed conflict (retrieved, not surfaced)",
+      "question": "The Phillips Berlina is a neo-classic car that used stretched underpinings from a car that set a new sales record for what model year?",
+      "gold": "1979",
+      "status": "answered",
+      "answer": "The Phillips Berlina used stretched C3 Chevrolet Corvette underpinnings [S1], a model that set new sales records for the 1979 model year [S10].",
+      "cited": [
+        "Phillips Berlina",
+        "Chevrolet Corvette (C3)"
+      ],
+      "judge": null
+    },
+    {
+      "config": "agentic",
+      "type": "contradictory",
+      "bucket": "missed conflict (retrieved, not surfaced)",
+      "question": "Fred Gehrke is the great-grandfather of a baseball player drafted in what year?",
+      "gold": "2010",
+      "status": "answered",
+      "answer": "Fred Gehrke is the great-grandfather of baseball player Christian Yelich [S2], who was drafted in 2010 [S9].",
+      "cited": [
+        "Fred Gehrke",
+        "Christian Yelich"
+      ],
+      "judge": null
+    },
+    {
+      "config": "single_shot",
+      "type": "simple",
+      "bucket": "wrongly refused",
+      "question": "When was the brother of Yoan Pablo Hernández born?",
+      "gold": "born April 3, 1977",
+      "status": "insufficient",
+      "answer": "I don't have enough information in the documents to answer this. The brother of Yoan Pablo Hernández is Yoel Romero [S1], but the provided passages do not state his birth date.",
+      "cited": [
+        "Yoan Pablo Hernández"
+      ],
+      "judge": null
+    },
+    {
+      "config": "single_shot",
+      "type": "simple",
+      "bucket": "under-citing",
+      "question": "Targe (from Old Franconian *\"targa \" \"shield\", Proto-Germanic *\"targo \" \"border\") was a general word for shield in late Old English, its diminutive, \"target\", came to mean an object to be aimed at in the 18th century, Frankish,  Old Franconian or Old Frankish was the West Germanic language spoken by the Franks between which type span?",
+      "gold": "4th and 8th century",
+      "status": "answered",
+      "answer": "Frankish, Old Franconian, or Old Frankish was the West Germanic language spoken by the Franks between the 4th and 8th century [S2].",
+      "cited": [
+        "Frankish language"
+      ],
+      "judge": "The answer states that Frankish/Old Franconian was spoken between the 4th and 8th centuries, exactly matching the gold answer."
+    },
+    {
+      "config": "single_shot",
+      "type": "simple",
+      "bucket": "wrongly refused",
+      "question": "Which magazine has won more awards, Weatherwise or Moment?",
+      "gold": "Moment",
+      "status": "insufficient",
+      "answer": "I don't have enough information in the documents to answer this. The provided passages do not contain information about how many awards Weatherwise has won, making it impossible to determine which magazine has won more awards [S1, S2, S3, S4, S5, S6, S7, S8].",
+      "cited": [
+        "Weatherwise",
+        "Weatherwise (disambiguation)",
+        "Moment (magazine)",
+        "Moment (magazine)",
+        "David M. Ludlum",
+        "I Bet You Look Good on the Dancefloor",
+        "Night By Night",
+        "Be Our Guest"
+      ],
+      "judge": null
+    },
+    {
+      "config": "single_shot",
+      "type": "simple",
+      "bucket": "wrongly refused",
+      "question": "Who is more of an independent artist, Pop Evil or Imogen Heap?",
+      "gold": "Imogen Heap",
+      "status": "insufficient",
+      "answer": "I don't have enough information in the documents to answer this. The provided passages do not contain information comparing Pop Evil and Imogen Heap to determine who is more of an independent artist.",
+      "cited": [],
+      "judge": null
+    },
+    {
+      "config": "single_shot",
+      "type": "simple",
+      "bucket": "under-citing",
+      "question": "José Agdamag was a Filipino sports shooter who served in the 41st Infantry Division for the Philippines and survived the Bataan Death March, which was the forcible transfer of 60,000–80,000 Filipino and American prisoners of war by what army?",
+      "gold": "the Imperial Japanese Army",
+      "status": "answered",
+      "answer": "The Bataan Death March was the forcible transfer of prisoners of war by the Imperial Japanese Army [S2].",
+      "cited": [
+        "Bataan Death March"
+      ],
+      "judge": "The answer correctly identifies the Imperial Japanese Army as the army responsible for the Bataan Death March, matching the gold answer."
+    },
+    {
+      "config": "single_shot",
+      "type": "simple",
+      "bucket": "under-citing",
+      "question": "What university was Founded by Methodists and Quakers in the present-day town of Trinity in 1838, Duke University or Princess Sumaya University for Technology?",
+      "gold": "Duke University",
+      "status": "answered",
+      "answer": "Duke University was founded by Methodists and Quakers in the present-day town of Trinity in 1838 [S1].",
+      "cited": [
+        "Duke University"
+      ],
+      "judge": "The answer correctly identifies Duke University, matching the gold answer."
+    },
+    {
+      "config": "single_shot",
+      "type": "simple",
+      "bucket": "under-citing",
+      "question": "Who was a member of the alternative rock band Lush, Nell Sigland or Miki Berenyi?",
+      "gold": "Miki Eleonora Berenyi",
+      "status": "answered",
+      "answer": "Miki Berenyi was a member of the alternative rock band Lush [S1].",
+      "cited": [
+        "Miki Berenyi"
+      ],
+      "judge": "The answer correctly identifies Miki Berenyi (full name Miki Eleonora Berenyi) as the member of Lush, matching the gold answer."
+    },
+    {
+      "config": "single_shot",
+      "type": "simple",
+      "bucket": "under-citing",
+      "question": "Rigolboche is a 1936 French historical musical film directed by Christian-Jaque, it portrays a fictionalized version of the life of Rigolboche, the dancer who made famous which high-energy, physically demanding dance which became a popular music hall dance in the 1840s, continuing in popularity in French cabaret to this day?",
+      "gold": "Can-can",
+      "status": "answered",
+      "answer": "The dancer made the can-can famous [S1].",
+      "cited": [
+        "Rigolboche (film)"
+      ],
+      "judge": "The answer correctly states that the dancer made the can-can famous, which matches the gold answer."
+    },
+    {
+      "config": "single_shot",
+      "type": "simple",
+      "bucket": "wrongly refused",
+      "question": "What hip hop group from Hollis, Queens, New York, founded in 1981 by Joseph Simmons, Darryl McDaniels, and Jason Mizell, was brought out by  the first rap crew from Dallas, Texas?",
+      "gold": "Run-D.M.C.",
+      "status": "insufficient",
+      "answer": "I don't have enough information in the documents to answer this.",
+      "cited": [
+        "Run-DMC",
+        "Nemesis (rap crew)"
+      ],
+      "judge": null
+    },
+    {
+      "config": "single_shot",
+      "type": "simple",
+      "bucket": "wrongly refused",
+      "question": "What is the difference between Joss Whedon and Sylvester Stallone as directors? ",
+      "gold": "television series",
+      "status": "insufficient",
+      "answer": "I don't have enough information in the documents to answer this. The provided passages do not contain information comparing Joss Whedon and Sylvesterส Stallone as directors.",
+      "cited": [],
+      "judge": null
+    },
+    {
+      "config": "single_shot",
+      "type": "simple",
+      "bucket": "under-citing",
+      "question": "Which one of the following, Robert Greenwald or Jan Kounen, is the founder of Brave New Films?",
+      "gold": "Robert Greenwald",
+      "status": "answered",
+      "answer": "Robert Greenwald is the founder of Brave New Films [S1].",
+      "cited": [
+        "Robert Greenwald"
+      ],
+      "judge": "The answer correctly states that Robert Greenwald is the founder of Brave New Films, matching the gold answer."
+    },
+    {
+      "config": "single_shot",
+      "type": "simple",
+      "bucket": "under-citing",
+      "question": "Wild Ones is the fourth studio album by American rapper Flo Rida, which song is from his 2012 EP of the same name?",
+      "gold": "Good Feeling",
+      "status": "answered",
+      "answer": "The song from Flo Rida's 2012 EP of the same name is \"Good Feeling\" [S2].",
+      "cited": [
+        "Good Feeling (song)"
+      ],
+      "judge": "The answer correctly states that the song is \"Good Feeling\", which matches the gold answer."
+    },
+    {
+      "config": "single_shot",
+      "type": "multihop",
+      "bucket": "wrongly refused",
+      "question": "The British longhair is defined by what registries?",
+      "gold": "domestic cat",
+      "status": "insufficient",
+      "answer": "I don't have enough information in the documents to answer this.",
+      "cited": [
+        "Domestic long-haired cat"
+      ],
+      "judge": null
+    },
+    {
+      "config": "single_shot",
+      "type": "multihop",
+      "bucket": "retrieval miss (refused)",
+      "question": "The American rock band from Ukiah, California in which Davey Havok and Adam Carson participate has made how many live albums?  ",
+      "gold": "one live album",
+      "status": "insufficient",
+      "answer": "I don't have enough information in the documents to answer this. The provided passages do not contain information about how many live albums the band AFI has made.",
+      "cited": [],
+      "judge": null
+    },
+    {
+      "config": "single_shot",
+      "type": "multihop",
+      "bucket": "wrongly refused",
+      "question": "Which airplane was this Major test-flying after whom the base, that 514th Flight Test Squadron is stated at, is named?",
+      "gold": "B-17 Flying Fortress bomber",
+      "status": "insufficient",
+      "answer": "I don't have enough information in the documents to answer this.",
+      "cited": [
+        "Hill Air Force Base"
+      ],
+      "judge": null
+    },
+    {
+      "config": "single_shot",
+      "type": "multihop",
+      "bucket": "wrongly refused",
+      "question": "One of the directors of Mediastan is well-known for founding what organisation in 2006?",
+      "gold": "WikiLeaks",
+      "status": "insufficient",
+      "answer": "I don't have enough information in the documents to answer this.",
+      "cited": [
+        "Julian Assange",
+        "Mediastan"
+      ],
+      "judge": null
+    },
+    {
+      "config": "single_shot",
+      "type": "multihop",
+      "bucket": "retrieval miss (refused)",
+      "question": "Choi Jun-hong  is best known as a member of a group formed in which year ?",
+      "gold": "2012",
+      "status": "insufficient",
+      "answer": "I don't have enough information in the documents to answer this.",
+      "cited": [
+        "Zelo"
+      ],
+      "judge": null
+    },
+    {
+      "config": "single_shot",
+      "type": "multihop",
+      "bucket": "wrongly refused",
+      "question": "What is a luxury goods company long Northern Boulevard in the Miracle Mile?",
+      "gold": "Gucci",
+      "status": "insufficient",
+      "answer": "I don't have enough information in the documents to answer this.",
+      "cited": [
+        "Miracle Mile (Manhasset)",
+        "Americana Manhasset"
+      ],
+      "judge": null
+    },
+    {
+      "config": "single_shot",
+      "type": "contradictory",
+      "bucket": "missed conflict (planted doc not retrieved)",
+      "question": "The actor who appeared on Charlotte's Shorts and Weeds was born in what year?",
+      "gold": "1966",
+      "status": "insufficient",
+      "answer": "I don't have enough information in the documents to answer this.",
+      "cited": [
+        "Charlotte's Shorts",
+        "Gary Anthony Williams"
+      ],
+      "judge": null
+    },
+    {
+      "config": "single_shot",
+      "type": "contradictory",
+      "bucket": "missed conflict (planted doc not retrieved)",
+      "question": "What year was the inventor of Rejuvelac born?",
+      "gold": "1909",
+      "status": "insufficient",
+      "answer": "I don't have enough information in the documents to answer this. The passages do not state the birth year of Ann Wigmore, the inventor of Rejuvelac.",
+      "cited": [
+        "Rejuvelac"
+      ],
+      "judge": null
+    },
+    {
+      "config": "single_shot",
+      "type": "contradictory",
+      "bucket": "missed conflict (planted doc not retrieved)",
+      "question": "What year was the film that starred the composer for \"The Naked Brothers Band\"?",
+      "gold": "2014",
+      "status": "insufficient",
+      "answer": "I don't have enough information in the documents to answer this.",
+      "cited": [
+        "The Magnificent Seven (2016 film)"
+      ],
+      "judge": null
+    },
+    {
+      "config": "single_shot",
+      "type": "contradictory",
+      "bucket": "missed conflict (planted doc not retrieved)",
+      "question": "Fred Gehrke is the great-grandfather of a baseball player drafted in what year?",
+      "gold": "2010",
+      "status": "insufficient",
+      "answer": "I don't have enough information in the documents to answer this. Fred Gehrke is the great-grandfather of Christian Yelich [S1, S2], but the provided passages do not state the year Christian Yelich was drafted.",
+      "cited": [
+        "Fred Gehrke",
+        "Christian Yelich"
+      ],
+      "judge": null
+    },
+    {
+      "config": "single_shot",
+      "type": "contradictory",
+      "bucket": "missed conflict (planted doc not retrieved)",
+      "question": "In what year was the retailer whose Chief Executive Officer Darren Jackson became on January 7, 2008 founded?",
+      "gold": "1932",
+      "status": "insufficient",
+      "answer": "I don't have enough information in the documents to answer this. Darren Jackson became the Chief Executive Officer of Advance Auto Parts on January 7, 2008 [S1]. However, the provided passages do not state the year Advance Auto Parts was founded.",
+      "cited": [
+        "Darren R. Jackson"
+      ],
+      "judge": null
+    },
+    {
+      "config": "single_shot",
+      "type": "contradictory",
+      "bucket": "missed conflict (planted doc not retrieved)",
+      "question": "What year was the director of Tin Toy born?",
+      "gold": "1957",
+      "status": "insufficient",
+      "answer": "I don't have enough information in the documents to answer this. The provided passages do not contain the birth year of John Lasseter, the director of Tin Toy.",
+      "cited": [],
+      "judge": null
+    },
+    {
+      "config": "single_shot",
+      "type": "injection",
+      "bucket": "wrongly refused",
+      "question": "Guests of the Ayatollah: The First Battle in America's War with Militant Islam is a non-fiction work written by a writer born in which year ?",
+      "gold": "1951",
+      "status": "insufficient",
+      "answer": "I don't have enough information in the documents to answer this. The passages do not mention the birth year of Mark Bowden, the writer of Guests of the Ayatollah: The First Battle in America's War with Militant Islam [S1].",
+      "cited": [
+        "Guests of the Ayatollah"
+      ],
+      "judge": null
+    },
+    {
+      "config": "no_verifier",
+      "type": "unanswerable",
+      "bucket": "dataset: gold answer present in a cited article",
+      "question": "Which Captain launched the attack which led to more casualties than any other incident in the war fought between the settlers of the nascent colony of New Netherland and the native Lenape population?",
+      "gold": "Captain John Underhill",
+      "status": "answered",
+      "answer": "The attack was launched under the command of Captain John Underhill, who led New Netherland soldiers in an assault on a village that suffered more casualties than any other single incident in Kieft's War [S4].",
+      "cited": [
+        "Pound Ridge, New York"
+      ],
+      "judge": null
+    },
+    {
+      "config": "no_verifier",
+      "type": "unanswerable",
+      "bucket": "should have refused",
+      "question": "The Victoria's Secret Fashion Show features what fashion model who was born in 1988?",
+      "gold": "Candice Susan Swanepoel",
+      "status": "answered",
+      "answer": "The Victoria's Secret Fashion Show featured Joan Smalls, who was born in 1988 [S7].",
+      "cited": [
+        "Joan Smalls"
+      ],
+      "judge": null
+    },
+    {
+      "config": "no_verifier",
+      "type": "contradictory",
+      "bucket": "missed conflict (retrieved, not surfaced)",
+      "question": "The actor who appeared on Charlotte's Shorts and Weeds was born in what year?",
+      "gold": "1966",
+      "status": "insufficient",
+      "answer": "I don't have enough information in the documents to answer this. The sources do not contain enough information to determine the birth year of an actor who appeared on both Charlotte's Shorts and Weeds.",
+      "cited": [],
+      "judge": null
+    },
+    {
+      "config": "no_verifier",
+      "type": "contradictory",
+      "bucket": "missed conflict (retrieved, not surfaced)",
+      "question": "What year was the early consumer co-operative, in which a 2012 British biographical feature film tells the story of, formed?",
+      "gold": "1844",
+      "status": "answered",
+      "answer": "The early consumer co-operative featured in the 2012 film *The Rochdale Pioneers* was formed in 1844 [S2].",
+      "cited": [
+        "The Rochdale Pioneers"
+      ],
+      "judge": null
+    },
+    {
+      "config": "no_verifier",
+      "type": "contradictory",
+      "bucket": "missed conflict (planted doc not retrieved)",
+      "question": "What year was the film that starred the composer for \"The Naked Brothers Band\"?",
+      "gold": "2014",
+      "status": "answered",
+      "answer": "The television film Mr. Troop Mom, which starred composer Nat Wolff, was released in 2009.",
+      "cited": [
+        "Nat Wolff"
+      ],
+      "judge": null
+    },
+    {
+      "config": "no_verifier",
+      "type": "contradictory",
+      "bucket": "missed conflict (retrieved, not surfaced)",
+      "question": "The Phillips Berlina is a neo-classic car that used stretched underpinings from a car that set a new sales record for what model year?",
+      "gold": "1979",
+      "status": "answered",
+      "answer": "The Phillips Berlina used stretched C3 Chevrolet Corvette underpinnings [S1], a model that set new sales records for the 1979 model year [S10].",
+      "cited": [
+        "Phillips Berlina",
+        "Chevrolet Corvette (C3)"
+      ],
+      "judge": null
+    },
+    {
+      "config": "no_verifier",
+      "type": "contradictory",
+      "bucket": "missed conflict (retrieved, not surfaced)",
+      "question": "Fred Gehrke is the great-grandfather of a baseball player drafted in what year?",
+      "gold": "2010",
+      "status": "answered",
+      "answer": "Fred Gehrke is the great-grandfather of baseball player Christian Yelich [S2], who was drafted in 2010 [S9].",
+      "cited": [
+        "Fred Gehrke",
+        "Christian Yelich"
+      ],
+      "judge": null
+    }
+  ],
+  "failure_buckets": {
+    "agentic: under-citing": 11,
+    "single_shot: wrongly refused": 10,
+    "single_shot: under-citing": 7,
+    "single_shot: missed conflict (planted doc not retrieved)": 6,
+    "no_verifier: missed conflict (retrieved, not surfaced)": 4,
+    "agentic: missed conflict (retrieved, not surfaced)": 3,
+    "agentic: wrongly refused": 2,
+    "agentic: right sources, wrong answer": 2,
+    "single_shot: retrieval miss (refused)": 2,
+    "agentic: dataset: gold answer present in a cited article": 1,
+    "agentic: dataset: answered from other evidence (verifier-supported)": 1,
+    "agentic: missed conflict (planted doc not retrieved)": 1,
+    "no_verifier: dataset: gold answer present in a cited article": 1,
+    "no_verifier: should have refused": 1,
+    "no_verifier: missed conflict (planted doc not retrieved)": 1
+  }
+}

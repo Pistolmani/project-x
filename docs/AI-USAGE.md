@@ -194,3 +194,35 @@
 - Claude Code (Claude Opus 5.5) — Phase 3 plan.
 - Cursor agent (Gemini 4 Argon) — Phase 3 implementation, tests, and live verification.
 
+---
+
+### 2026-10-24 — Session 7: Phase 3 review fixes + Phase 4 (evaluation)
+
+**What the AI did (Claude Code, Claude Opus 5.5)**
+- Reviewed the Cursor agent's Phase 3 work against the live cloud cluster (found that strict mode rejects
+  filters on unindexed fields; the needed index existed), then fixed: a missing error event on
+  `/ask/stream`, hand-typed numbers in dashboard captions, deprecated Streamlit arguments, and a circular
+  import that broke `streamlit run ui/app.py` (the entry file shadowed the backend's `app` package — the
+  in-process UI tests could not see it; a fresh-process test now does). Removed the Cursor co-author
+  trailer from two unpushed commits at the human's request.
+- Planned Phase 4 (approved), then built the final 55-question set with a stronger absence check (it
+  rejected 4 of the 10 original unanswerable questions), re-picked year-answer contradictory questions with
+  LLM-free planted conflicts, 5 injection cases, the LLM judge and metrics, a resumable runner over
+  `POST /ask`, and the scorer; ran agentic, single-shot and verifier-off configurations; wrote
+  `EVALUATION-REPORT.md`.
+- **Mistakes caught along the way:** the first stronger absence check was too loose (matched "citigroup"
+  for "CIT Group") and was tightened after inspecting its matches; a first entry-script test passed on the
+  broken layout and was replaced; two report claims (all injection docs retrieved; run time) were checked
+  against the data and corrected before commit.
+- Found and fixed two engine bugs from the eval: the relevance-floor gate scored passages against the
+  agent's sub-query instead of the question it was calibrated on; Groq requests exceeded the free tier's
+  8k-token limit on long investigations. Chose **not** to tune the verifier on the test results (its
+  missed conflicts are reported instead).
+
+**What the human decided / owns**
+- Phase 4 plan and its five decisions (re-pick contradictory set, keep planted docs tagged in the corpus,
+  Groq judge, agentic vs. single-shot + verifier-off, free tiers).
+
+**Tools / models used**
+- Claude Code (Claude Opus 5.5); engine LLMs Gemini 3.5 Flash-Lite / Flash and Groq gpt-oss-120b; judge
+  Groq gpt-oss-120b.

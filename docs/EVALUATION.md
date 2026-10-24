@@ -1,5 +1,9 @@
 # EVALUATION — Automated Eval Suite & Report
 
+> **Results:** [`EVALUATION-REPORT.md`](./EVALUATION-REPORT.md) (measured 2026-10-24). This file is the
+> methodology; where the build changed it (55 questions incl. 5 injection cases, re-picked contradictory
+> set, stronger absence check), the report says so.
+
 > How we prove the engine works. Basis of the **Evaluation Report** deliverable. Decision IDs (D1–D11,
 > E1–E5, A1) refer to `GRILL-ME.md`. The suite drives the **same FastAPI endpoints** the UI uses
 > (`/search`, `/ask`), so it measures the real system (D5).

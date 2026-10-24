@@ -100,13 +100,15 @@ Ingest: files(PDF/HTML/MD/TXT) → extract text+meta → chunk(fixed|recursive)
 | Retrieval | Hybrid + custom RRF + custom feature re-ranker | [`BACKEND.md`](./docs/BACKEND.md) |
 | Reasoning | Agentic tool-calling loop w/ citations + refusal | [`BACKEND.md`](./docs/BACKEND.md) |
 | Backend / UI | FastAPI + Streamlit (3 pages) | [`FRONTEND.md`](./docs/FRONTEND.md) |
-| Evaluation | 50-Q suite, Recall@K/MRR/Correctness/Citation | [`EVALUATION.md`](./docs/EVALUATION.md) |
+| Evaluation | 55-Q suite, Recall@K/MRR/Correctness/Citation | [`EVALUATION.md`](./docs/EVALUATION.md) · [Report](./docs/EVALUATION-REPORT.md) |
 | Hosting | Hugging Face Spaces (Docker) | [`GRILL-ME.md`](./docs/GRILL-ME.md) (D4/A4) |
 
 ---
 
 ## Status
 
-Spec/design complete and **design-review-hardened** — 24 decisions locked ([`GRILL-ME.md`](./docs/GRILL-ME.md)),
-`SETUP.md` added. Implementation pending (Phase 1: **offline corpus ingestion**). Deliverables still to
-produce: Evaluation Report (post-run) and the live demo URL.
+Phases 1–4 done: 50k-article corpus on Qdrant Cloud, hybrid retrieval with the custom RRF and feature
+re-ranker, the agentic engine with refusal/conflict gates, FastAPI + Streamlit UI, and the evaluation —
+see the **[Evaluation Report](./docs/EVALUATION-REPORT.md)** (agentic: 0.87 simple / 0.87 multi-hop answer
+accuracy, 0.6 conflict detection, 1.0 injection resistance). Remaining: Phase 5, deployment to a Hugging
+Face Space (public demo URL).

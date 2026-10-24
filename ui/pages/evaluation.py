@@ -166,8 +166,18 @@ def _render_behavioral_eval(beh: dict[str, Any] | None) -> None:
 
     by_type = beh.get("by_type")
     if isinstance(by_type, list) and by_type:
+        df = pd.DataFrame(by_type)
         st.markdown("**Metrics by question type**")
-        st.dataframe(pd.DataFrame(by_type), width="stretch", hide_index=True)
+        st.dataframe(df, width="stretch", hide_index=True)
+        if {"config", "type", "accuracy"} <= set(df.columns) and df["config"].nunique() > 1:
+            st.markdown("**Accuracy by question type and configuration**")
+            st.bar_chart(df.pivot(index="type", columns="config", values="accuracy"))
+
+    buckets = beh.get("failure_buckets")
+    if isinstance(buckets, dict) and buckets:
+        st.markdown("**Failure buckets**")
+        st.dataframe(pd.DataFrame([{"config: bucket": k, "count": v} for k, v in buckets.items()]),
+                     width="stretch", hide_index=True)  # fmt: skip
 
     failures = beh.get("failures")
     if isinstance(failures, list) and failures:
