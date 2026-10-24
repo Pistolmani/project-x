@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     gemini_api_key: SecretStr | None = None
     groq_api_key: SecretStr | None = None
 
+    gemini_model: str = "gemini-3.5-flash"
+    groq_model: str = "openai/gpt-oss-120b"
+    llm_timeout_s: float = 30
+    llm_retries: int = 2  # per provider, for retryable errors only
+
     dense_model: str = "BAAI/bge-small-en-v1.5"
     sparse_model: str = "Qdrant/bm25"
 
