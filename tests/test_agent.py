@@ -179,3 +179,24 @@ def test_single_shot_mode_searches_once_and_runs_gates():
 def test_llm_outage_returns_a_structured_error_not_an_answer():
     out = ask(ScriptedLLM([LLMUnavailable([LLMError("gemini", "down", retryable=False)])]))
     assert out.status == "error" and out.answer == "" and "LLM unavailable" in out.error
+
+
+def test_answer_lists_every_retrieved_source_not_only_the_cited_ones():
+    llm = ScriptedLLM([search("Spielberg"), submit("answered", "Born in 1946 [S1].", ["S1"])], [SUPPORTED])
+    out = ask(llm)
+    assert [r["title"] for r in out.retrieved] == ["Steven Spielberg", "Spielberg fan page"]
+    assert [c.source_id for c in out.citations] == ["S1"]
+
+
+def test_retrieval_gate_also_scores_cited_passages_against_the_original_question():
+    class QuestionAwareCE:
+        def score(self, query, texts):
+            return [6.5 if query.startswith("When was") else -1.0 for _ in texts]
+
+    searcher = FakeSearcher()
+    searcher.cross_encoder = QuestionAwareCE()
+    llm = ScriptedLLM([search("weather"), submit("answered", "Rain is water [S1].", ["S1"])], [SUPPORTED])
+    out = Agent(llm, searcher, FakeStore()).ask("When was rain discovered?", AgentParams(relevance_floor=3.92))
+    gate = out.gates["retrieval"]
+    assert gate["subquery_ce_score"] == -6.0 and gate["question_ce_score"] == 6.5 and gate["passed"]
+    assert out.status == "answered"

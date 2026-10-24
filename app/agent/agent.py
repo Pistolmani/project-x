@@ -54,6 +54,8 @@ class AgentAnswer:
     answer: str
     citations: list[Citation] = field(default_factory=list)
     searched: list[str] = field(default_factory=list)  # every query the agent ran
+    # Every source shown to the model (cited or not): what the eval's "retrieval miss" bucket checks.
+    retrieved: list[dict[str, Any]] = field(default_factory=list)
     gates: dict[str, Any] = field(default_factory=dict)  # what each check decided, and why
     trace: list[dict[str, Any]] = field(default_factory=list)
     usage: dict[str, int] = field(default_factory=lambda: {"llm_calls": 0, "input_tokens": 0, "output_tokens": 0})
@@ -90,6 +92,8 @@ class Agent:
         except (UnexpectedResponse, ResponseHandlingException) as e:
             out.status, out.answer, out.error = "error", "", f"vector store unavailable: {e}"
         out.searched = [s["query"] for s in toolbox.searches]
+        out.retrieved = [{"source_id": s.handle, "doc_id": s.doc_id, "title": s.title, "ce_score": s.ce_score}
+                         for s in toolbox.sources.values()]  # fmt: skip
         out.ms = round((time.perf_counter() - start) * 1000, 1)
         return out
 
@@ -174,6 +178,12 @@ class Agent:
                   "message": f"found {n_res} passage{'s' if n_res != 1 else ''}"})  # fmt: skip
         return result
 
+    def _question_ce_score(self, question: str, texts: list[str]) -> float | None:
+        cross_encoder = getattr(self.searcher, "cross_encoder", None)
+        if cross_encoder is None or not texts:
+            return None
+        return max(cross_encoder.score(question, texts))
+
     def _chat(self, system, messages, tools, out: AgentAnswer):
         step_start = time.perf_counter()
         response = self.llm.chat(system, messages, tools)
@@ -196,11 +206,19 @@ class Agent:
         if status == "answered" and not cited:
             status, answer = "insufficient", REFUSAL
         elif status == "answered":
-            best = toolbox.best_ce_score(cited)
-            if best is None:  # cited only passages read via get_document: use the article's searches
-                best = toolbox.best_ce_score()
+            best_subquery = toolbox.best_ce_score(cited)
+            if best_subquery is None:  # cited only passages read via get_document: use the article's searches
+                best_subquery = toolbox.best_ce_score()
+            # The floor was calibrated on the user's question, but each passage was scored against the
+            # agent's own sub-query, and keyword-style sub-queries score lower even on the right passage.
+            # So the cited passages are also scored against the original question; the better score counts.
+            best_question = self._question_ce_score(question, [toolbox.sources[h].text for h in cited])
+            scores = [x for x in (best_subquery, best_question) if x is not None]
+            best = max(scores) if scores else None
             passed = passes_relevance_floor(best, params.relevance_floor)
-            out.gates["retrieval"] = {"best_ce_score": best, "floor": params.relevance_floor, "passed": passed}
+            out.gates["retrieval"] = {"best_ce_score": best, "subquery_ce_score": best_subquery,
+                                      "question_ce_score": best_question, "floor": params.relevance_floor,
+                                      "passed": passed}  # fmt: skip
             if not passed:
                 status, answer = "insufficient", REFUSAL
 
