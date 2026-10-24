@@ -9,8 +9,8 @@ def render_documents_page() -> None:
     st.title("📄 Document Management")
     st.caption(
         "Chunking strategy: **fixed (deployed)** — 256-token windows with 32-token overlap (`bge` tokenizer). "
-        "At 50k Wikipedia articles, fixed tied recursive on Recall@10 (0.915 vs. 0.900) with ~30% fewer chunks "
-        "(see the **Evaluation** page for the full comparison)."
+        "It tied recursive chunking on recall at 50k articles with fewer chunks; the **Evaluation** page has "
+        "the measured comparison."
     )
 
     client = get_client()

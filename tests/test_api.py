@@ -159,3 +159,16 @@ def test_documents_format_filtering_separates_uploads_from_corpus(client):
 def test_eval_results_serves_tracked_results(client):
     body = client.get("/eval/results").json()
     assert "retrieval_comparison" in body and "tuned_weights_fixed" in body
+
+
+def test_ask_stream_reports_an_unexpected_failure_as_an_error_event(client):
+    class Exploding:
+        def ask(self, question, params=None, on_event=None):
+            on_event({"type": "progress", "stage": "thinking", "message": "planning…"})
+            raise RuntimeError("bug")
+
+    client.app.state.engine.agent = Exploding()
+    with client.stream("POST", "/ask/stream", json={"question": "Who directed Jaws?"}) as r:
+        events = [json.loads(line.removeprefix("data: ")) for line in r.iter_lines() if line.startswith("data: ")]
+    assert [e["type"] for e in events] == ["progress", "error"]
+    assert events[-1]["code"] == "internal_error" and "RuntimeError" in events[-1]["message"]

@@ -102,6 +102,10 @@ def create_app(engine=None, ingestion=None) -> FastAPI:
             try:
                 answer = agent.ask(body.question, body.params, on_event=events.put)
                 events.put({"type": "answer", "answer": _jsonable(asdict(answer))})
+            except Exception as e:  # anything ask() does not turn into status "error" itself
+                log.exception("ask/stream failed")
+                events.put({"type": "error", "code": "internal_error",
+                            "message": f"the investigation failed: {type(e).__name__}"})  # fmt: skip
             finally:
                 events.put(None)
 

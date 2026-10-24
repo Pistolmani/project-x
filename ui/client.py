@@ -65,7 +65,8 @@ class BackendClient:
         return self._request("POST", "/ask", json={"question": question, "params": params or {}}, allow_503_answer=True)
 
     def ask_stream(self, question: str, params: dict[str, Any] | None = None) -> Iterator[dict[str, Any]]:
-        """Yield SSE progress events (`type == "progress"`), then the final answer (`type == "answer"`)."""
+        """Yield SSE progress events (`type == "progress"`), then the final answer (`type == "answer"`).
+        A server-side failure arrives as `type == "error"` and is raised as BackendError."""
         url = f"{self.base_url}/ask/stream"
         try:
             with httpx.Client(timeout=self.timeout) as http:
@@ -75,7 +76,11 @@ class BackendClient:
                         raise _to_error(r)
                     for line in r.iter_lines():
                         if line.startswith("data: "):
-                            yield json.loads(line.removeprefix("data: "))
+                            event = json.loads(line.removeprefix("data: "))
+                            if event.get("type") == "error":
+                                raise BackendError(event.get("message", "the investigation failed"),
+                                                   event.get("code", "internal_error"))  # fmt: skip
+                            yield event
         except httpx.TimeoutException as e:
             raise BackendError("The backend timed out while investigating; try again.", "timeout") from e
         except httpx.HTTPError as e:

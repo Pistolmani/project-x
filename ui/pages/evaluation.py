@@ -44,14 +44,14 @@ def _render_retrieval_comparison(comp: dict[str, Any] | None, stats: dict[str, A
         st.info("`retrieval_comparison.json` not found.")
         return
 
+    deployed = comp.get("deployed_strategy", "fixed")
+    chunk_counts = {name: s.get("chunks_in_collection") for name, s in (stats or {}).get("strategies", {}).items()}
     if stats:
-        fixed_chunks = stats.get("strategies", {}).get("fixed", {}).get("chunks_in_collection", 300059)
-        rec_chunks = stats.get("strategies", {}).get("recursive", {}).get("chunks_in_collection", 433425)
         m1, m2, m3, m4 = st.columns(4)
-        m1.metric("Corpus articles", f"{stats.get('documents', 50000):,}")
-        m2.metric("Fixed chunks (deployed)", f"{fixed_chunks:,}")
-        m3.metric("Recursive chunks", f"{rec_chunks:,}", delta="-30.8% storage with fixed")
-        m4.metric("Deployed strategy", comp.get("deployed_strategy", "fixed").upper())
+        m1.metric("Corpus articles", f"{stats.get('documents', 0):,}")
+        m2.metric("Fixed chunks", f"{chunk_counts.get('fixed') or 0:,}")
+        m3.metric("Recursive chunks", f"{chunk_counts.get('recursive') or 0:,}")
+        m4.metric("Deployed strategy", deployed.upper())
 
     strategies = comp.get("strategies", {})
     rows = []
@@ -66,19 +66,14 @@ def _render_retrieval_comparison(comp: dict[str, Any] | None, stats: dict[str, A
     col_table, col_chart = st.columns([3, 2])
     with col_table:
         st.markdown("**Document-level Recall@K, MRR & Gold-Sentence Recall@10**")
-        st.dataframe(df, use_container_width=True, hide_index=True)
+        st.dataframe(df, width="stretch", hide_index=True)
 
     with col_chart:
         st.markdown("**Recall@10 across pipeline stages (fixed vs. recursive)**")
         pivot = df.pivot(index="config", columns="strategy", values="R@10")
         st.bar_chart(pivot)
 
-    st.caption(
-        "**Key findings:** (1) Hybrid search (BM25 + dense fused by custom weighted RRF) beats dense-only on both "
-        "strategies, with the largest jump on fixed windows (`0.765 → 0.885` R@10). "
-        "(2) Fixed and recursive chunking tie at the top of the funnel (`0.915` vs `0.900` R@10; `0.953` vs `0.923` MRR), "
-        "so **fixed is deployed** to Qdrant Cloud for ~30% lower vector storage."
-    )
+    st.caption(_retrieval_findings(df, chunk_counts, deployed))
 
 
 def _render_weight_tuning(fixed: dict[str, Any] | None, recursive: dict[str, Any] | None) -> None:
@@ -108,17 +103,49 @@ def _render_weight_tuning(fixed: dict[str, Any] | None, recursive: dict[str, Any
     df = pd.DataFrame(rows)
     c1, c2 = st.columns([3, 2])
     with c1:
-        st.dataframe(df, use_container_width=True, hide_index=True)
+        st.dataframe(df, width="stretch", hide_index=True)
     with c2:
         st.markdown("**Held-out R@20 (300 unseen questions)**")
         pivot = df.pivot(index="config", columns="strategy", values="held-out R@20")
         st.bar_chart(pivot)
 
-    st.caption(
-        "**Key finding:** The custom feature re-ranker (default weights) improves held-out Recall@20 and MRR over plain "
-        "RRF on both strategies (`0.908 → 0.922` fixed, `0.922 → 0.938` recursive). Coordinate-ascent tuning on 100 "
-        "questions overfit (recursive set `w_sparse=0`), so the **default weights are kept**."
-    )
+    st.caption(_tuning_findings(df))
+
+
+def _metric(df: pd.DataFrame, strategy: str, config: str, column: str) -> float | None:
+    hit = df[(df["strategy"] == strategy) & (df["config"] == config)]
+    return float(hit[column].iloc[0]) if len(hit) and pd.notna(hit[column].iloc[0]) else None
+
+
+def _retrieval_findings(df: pd.DataFrame, chunk_counts: dict[str, int | None], deployed: str) -> str:
+    """Key findings written from the loaded numbers, so they cannot go stale when the eval is re-run."""
+    parts = []
+    stages = [("dense only", "dense-only"), ("hybrid (RRF)", "hybrid"), ("full pipeline", "full pipeline")]
+    for strategy in sorted(df["strategy"].unique()):
+        steps = [f"{label} `{v:.3f}`" for config, label in stages
+                 if (v := _metric(df, strategy, config, "R@10")) is not None]  # fmt: skip
+        if len(steps) >= 2:
+            parts.append(f"{strategy}: " + " → ".join(steps))
+    text = "**Key findings (R@10):** " + "; ".join(parts) + "." if parts else ""
+    fixed, recursive = chunk_counts.get("fixed"), chunk_counts.get("recursive")
+    if fixed and recursive:
+        text += (f" **{deployed}** is deployed; fixed needs {fixed:,} chunks vs. {recursive:,} recursive "
+                 f"({1 - fixed / recursive:.0%} fewer).")  # fmt: skip
+    return text
+
+
+def _tuning_findings(df: pd.DataFrame) -> str:
+    parts = []
+    for strategy in sorted(df["strategy"].unique()):
+        rrf = _metric(df, strategy, "RRF only (no features)", "held-out R@20")
+        default = _metric(df, strategy, "default weights", "held-out R@20")
+        tuned = _metric(df, strategy, "tuned weights", "held-out R@20")
+        if None not in (rrf, default, tuned):
+            parts.append(f"{strategy}: RRF only `{rrf:.3f}`, default features `{default:.3f}`, tuned `{tuned:.3f}`")
+    if not parts:
+        return ""
+    return ("**Held-out R@20:** " + "; ".join(parts) + ". The weights in use are the defaults: tuning on 100 "
+            "questions did not beat them on the 300 held-out questions.")  # fmt: skip
 
 
 def _render_behavioral_eval(beh: dict[str, Any] | None) -> None:
@@ -140,9 +167,9 @@ def _render_behavioral_eval(beh: dict[str, Any] | None) -> None:
     by_type = beh.get("by_type")
     if isinstance(by_type, list) and by_type:
         st.markdown("**Metrics by question type**")
-        st.dataframe(pd.DataFrame(by_type), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(by_type), width="stretch", hide_index=True)
 
     failures = beh.get("failures")
     if isinstance(failures, list) and failures:
         st.markdown("**Failure-mode table**")
-        st.dataframe(pd.DataFrame(failures), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(failures), width="stretch", hide_index=True)

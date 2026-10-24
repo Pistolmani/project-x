@@ -38,7 +38,7 @@ def render_ask_page() -> None:
     st.markdown("**Try an example question:**")
     ex_cols = st.columns(len(EXAMPLES))
     for col, (label, q_text) in zip(ex_cols, EXAMPLES):
-        if col.button(f"{label}: {q_text[:48]}…", key=f"ex_{label}", use_container_width=True):
+        if col.button(f"{label}: {q_text[:48]}…", key=f"ex_{label}", width="stretch"):
             st.session_state["ask_question_input"] = q_text
 
     question = st.text_area(
@@ -110,9 +110,11 @@ def _run_investigation(client: BackendClient, question: str, params: dict[str, A
         st.error(f"Investigation failed: {e.message}")
         return
 
-    if answer_payload is not None:
-        st.session_state["last_answer"] = answer_payload
-        st.session_state["last_progress"] = progress_log
+    if answer_payload is None:
+        st.error("Investigation failed: the backend closed the stream without an answer.")
+        return
+    st.session_state["last_answer"] = answer_payload
+    st.session_state["last_progress"] = progress_log
 
 
 def _render_answer(client: BackendClient, ans: dict[str, Any], progress_log: list[str]) -> None:

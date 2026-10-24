@@ -73,6 +73,9 @@ class FakeClient:
     def ask_stream(self, question: str, params: dict[str, Any] | None = None) -> Iterator[dict[str, Any]]:
         if self.fail:
             raise BackendError("LLM unavailable", "llm_down", 503)
+        if self.answer_state == "no_answer":  # the stream ends without a final answer event
+            yield {"type": "progress", "stage": "thinking", "message": "planning…"}
+            return
         self.last_ask_params = params
         yield {"type": "progress", "stage": "searching", "message": f"searching: {question}"}
         yield {"type": "progress", "stage": "found", "message": "found 2 passages"}
@@ -273,3 +276,25 @@ def test_evaluation_page_renders_comparisons_and_tables():
     assert not at.exception
     assert len(at.dataframe) >= 2
     assert any("300,059" in m.value for m in at.metric)
+
+
+def test_ask_page_shows_an_error_when_the_stream_ends_without_an_answer():
+    at = _ask_app(FakeClient("no_answer"))
+    at.text_area(key="ask_question_input").set_value("Who directed Jaws?").run()
+    at.button(key="btn_ask").click().run()
+    assert not at.exception
+    assert any("without an answer" in e.value for e in at.error)
+
+
+def test_evaluation_findings_are_computed_from_the_loaded_results():
+    def script():
+        from ui.pages.evaluation import render_evaluation_page
+
+        render_evaluation_page()
+
+    at = AppTest.from_function(script)
+    at.session_state["_client"] = FakeClient()
+    at.run()
+    captions = " ".join(c.value for c in at.caption)
+    assert "dense-only `0.765`" in captions and "full pipeline `0.915`" in captions
+    assert "31% fewer" in captions  # 300,059 vs. 433,425 chunks, from index_stats
