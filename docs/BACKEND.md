@@ -4,7 +4,7 @@
 > question becomes an answer with citations, and *why* each stage is built the way it is. Decision IDs
 > (D1–D11, E1–E5, A1–A8) refer to `GRILL-ME.md`, the single source of truth for decisions.
 >
-> **Stack:** FastAPI (D5). **LLM:** Gemini 2.x Flash + Groq fallback (D3/A2). **Embeddings:** local
+> **Stack:** FastAPI (D5). **LLM:** Gemini 3.5 Flash-Lite → 3.5 Flash → Groq `gpt-oss-120b` fallback chain (D3/A2, §5.5). **Embeddings:** local
 > `bge-small-en-v1.5` (A2). **Re-rank:** `bge-reranker-base` (A2, bonus). **Vector store:** Qdrant Cloud
 > (D2). See `DATABASE.md`, `DATASET.md`, `SETUP.md`.
 
@@ -158,18 +158,25 @@ us "nothing here is actually relevant."
 
 ## 5. Reasoning — the agentic RAG loop (D10)
 
-The LLM (Gemini Flash) is given tools and **decides how to investigate**, satisfying **multi-step
+The LLM (Gemini Flash-Lite, see §5.5 for why not Flash) is given tools and **decides how to investigate**, satisfying **multi-step
 reasoning + tool-calling**.
 
-### 5.1 Tools exposed to the LLM
-- `search_documents(query, filters?)` → runs the §4 retrieval pipeline, returns chunks + `doc_id`s.
-- `get_document(doc_id)` → fetch a full document for deeper reading.
+### 5.1 Tools exposed to the LLM (`app/agent/tools.py`)
+- `search_documents(query)` → runs the §4 retrieval pipeline, returns passages with **source ids**.
+- `get_document(source_id)` → reads more of the article a source came from, in order (capped at ~6k chars).
+- `submit_answer(status, answer, citations)` → the only way to finish; its schema enforces the output
+  shape on both providers (`status` ∈ answered / insufficient / conflict).
+
+Every passage shown to the model gets a short handle (`S1`, `S2`, …) the first time it appears. The model
+cites handles, not UUIDs: short ids are copied reliably, and a citation can only be valid if that handle
+was actually shown.
 
 ### 5.2 The loop
 1. **Plan** — break the question into sub-questions (multi-hop).
 2. **Act** — call `search_documents` (often several times, refining from what it just learned).
 3. **Observe** — read returned chunks.
-4. **Decide** — enough evidence? If not, loop (bounded by a **max-iteration cap** and **tool-call budget**).
+4. **Decide** — enough evidence? If not, loop (bounded by **5 LLM iterations** and **8 tool calls**; when
+   the budget runs out, one last call that can only `submit_answer`).
 5. **Answer or refuse** — synthesize with citations, or refuse (§5.4).
 
 ### 5.3 Citations
@@ -177,7 +184,20 @@ Every claim cites the `doc_id`/`chunk_id` it came from; the UI turns these into 
 prompt forbids stating anything not traceable to a retrieved chunk.
 
 ### 5.4 Contradiction & insufficiency detection → **refusal** (anti-hallucination, required — review fix)
-This is a **concrete, testable step**, not a vibe:
+This is a **concrete, testable step**, not a vibe (`app/agent/gates.py`; every decision is recorded in
+the answer's `gates` field):
+
+**As built:** (1) **citation check** — cited handles must have been shown; an "answered" with no valid
+citation becomes a refusal. (2) **retrieval gate** — the best cross-encoder score of the cited passages
+must reach the **floor 3.92**, calibrated by `evaluation/calibrate_floor.py`: it passes 95% of answerable
+tuning questions and blocks 71% of held-out (unanswerable) ones; the balanced optimum (5.75) would have
+refused 15% of answerable questions, too much for a backstop. (3) **verifier** — one LLM call with a JSON
+schema that judges both *supported* (paraphrase allowed — a first, stricter prompt refused a correct
+answer over "best known for") and *conflict*. It sees the cited passages **plus the best uncited ones**,
+because a planted conflicting passage is typically retrieved but not cited when the model silently picks
+a side. A conflict with two distinct sources turns the answer into "Source A says X; Source B says Y".
+
+Design as planned:
 
 - **Insufficiency gate (two checks):**
   1. **Retrieval gate** — if the top **cross-encoder score** is below the relevance floor, refuse:
@@ -199,9 +219,24 @@ Timeouts/retries on Gemini/Groq and Qdrant calls; the tool-call budget caps cost
 are caught and fed back to the model; any unrecoverable error returns a **structured error** to the UI,
 never a fabricated answer.
 
+**As built (`app/llm/`):** providers sit behind one neutral `chat()` interface. `FallbackLLM` retries
+429/5xx/timeouts after the delay the provider asks for (free tiers say "retry in 46s") when it is ≤ 60 s,
+otherwise moves on to the next provider. **Measured free-tier limits (2026-10-24):** `gemini-3.5-flash`
+allows **20 requests/day** (5/min) — too few for a 50-question eval at ~4–6 calls per question — so
+`gemini-3.5-flash-lite` investigates, Flash is a second (separate) Gemini quota, and Groq
+`gpt-oss-120b` (1,000 requests/day, 8k tokens/min) is last. Gemini must be sent back its own thought
+signatures, so a question that fell back to another model stays there. Groq's occasional
+`tool_use_failed` (gpt-oss calling a non-existent tool) is retried. An LLM outage makes `/ask` return 503
+with `status: "error"`.
+
 ---
 
 ## 6. Caching (bonus A1)
+
+**As built (`app/cache.py`, SQLite):** query embeddings, search results and LLM responses (investigator
+and verifier). Search keys include a **corpus generation** that every add/update/delete bumps, so a cached
+result can never outlive the corpus it came from (verified live: after deleting a document, the same
+question was refused instead of answered from cache). LLM hits replay Gemini's native turn exactly.
 
 - **Embedding cache** — keyed by `sha256(text)`; avoids re-embedding identical queries/chunks.
 - **Retrieval cache** — keyed by `hash(query + config)`; returns prior ranked results.
@@ -248,7 +283,7 @@ calls**, which can exhaust Gemini's free tier. Mitigations, by design:
 | `PUT`  | `/documents/{doc_id}` | Re-ingest / update (version bump). |
 | `DELETE` | `/documents/{doc_id}` | Delete document + its chunks. |
 | `POST` | `/search` | Raw retrieval (ranked chunks). Powers the LLM-free retrieval eval + debugging. |
-| `POST` | `/ask` | Full agentic RAG. Returns answer, citations, trace, refusal/conflict flags. Streams. |
+| `POST` | `/ask` | Full agentic RAG. Returns answer, citations, searched queries, gates, trace, usage (not streamed yet). |
 | `GET`  | `/health` | Liveness + model/DB readiness. |
 
 Config knobs (chunking strategy, RRF weights, top-k, which rerank stages are on, relevance floor, agentic
@@ -267,7 +302,7 @@ on/off) are request parameters **and** have env defaults, so the eval can sweep 
 | Dense/sparse weights | 1.0 / 1.0 (tuned in eval) | Start neutral, then ablate. |
 | Retrieval candidates | 50 | Enough recall for re-rankers to work on. |
 | Cross-encoder top-N | 20 | Precision refinement without latency blowup. |
-| Relevance floor | cross-encoder score threshold (tuned) | Gate for "insufficient" — NOT on RRF. |
+| Relevance floor | cross-encoder logit **3.92** (calibrated) | Gate for "insufficient" — NOT on RRF. |
 | Final top-k to LLM | 8 | Enough evidence, within context budget. |
 | Max chunks per article | 2 | Multi-hop needs evidence from more than one article. |
 | Max agent iterations | 5 | Prevents runaway loops. |

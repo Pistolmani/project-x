@@ -92,6 +92,12 @@ Precision penalizes over-citing; Recall penalizes missing evidence; F1 is the ha
   since exact-dedup won't catch it and we **don't collapse near-dups** (`BACKEND.md` §3.5). Both the
   original and the injected doc are retrievable → correct behavior = **surface the conflict**.
 
+> **Measured limitation (Phase 2b smoke run):** the absence check matches the exact answer string, so a
+> paraphrase escapes it — "What coat coloration do Colorpoint Shorthairs and Siamese share?" (gold "Point
+> coloration") is answerable from the still-indexed "Siamese cat" and "Cat coat genetics" articles, which
+> say "colorpoint". The engine answered it correctly from those sources; the eval must count such cases
+> as a dataset fault, not a hallucination (failure analysis, §8).
+
 > **Defense:** *"I manipulated the corpus, not invented questions. For unanswerable I remove the evidence
 > AND verify the answer string is absent. For contradictory I add a small standalone conflicting document,
 > so the two sources are genuinely distinct and my conflict detector has something real to find."*

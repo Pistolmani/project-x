@@ -136,4 +136,30 @@
 
 ---
 
+### 2026-10-24 — Session 5: Phase 2a results + Phase 2b (reasoning engine and API)
+
+**What the AI did (Claude Code, Claude Opus 5.5)**
+- Finished the 50k index for both strategies after a low-memory kill (streaming fix), ran the chunking /
+  hybrid / re-ranker comparison and the weight tuning, and reported that tuning **overfit** (held-out
+  results got worse), so the defaults were kept; wrote `copy_to_cloud.py` and deployed the fixed strategy.
+- Planned Phase 2b (the human asked for the plan before any work and approved it), then wrote: the LLM
+  layer (Gemini + Groq + fallback), tools and agent loop, gates (citation check, calibrated relevance
+  floor, verifier), SQLite cache, PDF/HTML/Markdown/TXT loaders, add/update/delete service, FastAPI app —
+  with pytest coverage (107 unit tests passing).
+- Ran real questions and found problems the fakes could not: Gemini Flash's free tier is 20 requests/day
+  (switched the investigator to Flash-Lite), provider retry delays were ignored (now honored), the first
+  verifier prompt was too strict (refused a correct answer), and one "unanswerable" eval question is
+  actually answerable from other articles because the absence check matches only the exact answer string
+  ("Point coloration" vs. "colorpoint") — recorded for the failure analysis.
+
+**What the human decided / owns**
+- Deploying the fixed strategy with default weights; the Phase 2b plan and its three decisions (LLM-judge
+  contradiction check, engine before API, the new dependencies). Created the Gemini and Groq keys and put
+  them in `.env` themselves (never shown to the AI).
+
+**Tools / models used**
+- Claude Code (Claude Opus 5.5); Gemini 3.5 Flash-Lite / Flash and Groq gpt-oss-120b as the engine's LLMs.
+
+---
+
 <!-- Add the next session entry below this line -->
