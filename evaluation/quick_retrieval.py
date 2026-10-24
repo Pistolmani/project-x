@@ -44,7 +44,7 @@ def evaluate(searcher: Searcher, questions: list[dict], params: SearchParams) ->
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--set", choices=["tuning", "retrieval"], default="tuning")
-    p.add_argument("--strategy", choices=[s.value for s in ChunkingStrategy], default="recursive")
+    p.add_argument("--strategy", choices=[s.value for s in ChunkingStrategy], default="fixed")
     p.add_argument("--configs", default=",".join(CONFIGS), help="comma-separated config names")
     args = p.parse_args()
 

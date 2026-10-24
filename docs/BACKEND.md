@@ -68,7 +68,8 @@ corpus is ingested as **full Wikipedia articles** (see `DATASET.md`) through the
 - **B. Recursive / structural** — split on natural boundaries (headings → paragraphs → sentences) down to a
   **256-token cap**, never crossing a section. Keeps sentences whole. Industry-standard.
 
-We expect **B to win on Recall@K / MRR** (cleaner, more focused chunks). **Measured caveat:** HotpotQA's
+We expected **B to win on Recall@K / MRR** (cleaner, more focused chunks). **Measured at 50k: a tie**
+(R@10 0.900 vs. 0.915, `EVALUATION.md` §7.1), so **fixed is deployed** — same quality, ~30% fewer chunks. **Why:** HotpotQA's
 gold sentences sit at the start of each article, inside the first fixed window, so fixed cuts only 0.2%
 of them — the chunk-level gold-sentence metric can't separate the strategies on this data
 (`DATASET.md` §2). Semantic chunking is noted as *bonus/future*.

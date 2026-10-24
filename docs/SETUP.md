@@ -45,8 +45,9 @@ pytest                                         # the A7 test suite
 
 ## 4. Offline bulk ingestion (do NOT run on the Space — review fix)
 
-Embedding ~50k long articles on the Space's free CPU is far too slow. Run ingestion **locally or on a free
-Colab GPU**, pushing vectors to Qdrant Cloud; the deployed Space only *queries*.
+Embedding ~50k long articles on the Space's free CPU is far too slow. Run ingestion **locally** (or on a
+free Colab GPU) into a local Qdrant, then copy the chosen strategy to Qdrant Cloud; the deployed Space
+only *queries*.
 
 ```
 # Local Qdrant for development (data persists in ./qdrant_storage, git-ignored)
@@ -59,6 +60,14 @@ python -m ingest.build_corpus --stage build --target 50000 --seed 42
 # Stage 2 (GPU if present): chunk with each strategy, embed dense + sparse, upsert to QDRANT_URL.
 #   Resumable: already-indexed (content, strategy) pairs are skipped.
 python -m ingest.build_corpus --stage index --strategies recursive,fixed
+
+# Compare the strategies locally (EVALUATION.md §7.1), then deploy only the winner.
+python -m evaluation.quick_retrieval --set tuning --strategy fixed
+python -m evaluation.tune_weights --strategy fixed
+
+# Stage 3: point .env at the cloud cluster (QDRANT_URL + QDRANT_API_KEY), then copy the stored vectors
+#   from local Qdrant (nothing is re-embedded). Idempotent; --start-offset resumes a cut-off run.
+python -m ingest.copy_to_cloud --strategy fixed --source-url http://localhost:6333
 ```
 
 The first `build` downloads HotpotQA (~360 MB) and the English Wikipedia shards (~11.6 GB) into

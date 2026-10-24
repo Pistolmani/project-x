@@ -23,7 +23,8 @@ from app.store.qdrant_store import DENSE, SPARSE, QdrantStore
 
 
 class SearchParams(BaseModel):
-    strategy: ChunkingStrategy = ChunkingStrategy.RECURSIVE
+    # The deployed strategy: equal recall to recursive at 50k, ~30% fewer chunks (EVALUATION.md).
+    strategy: ChunkingStrategy = ChunkingStrategy.FIXED
     mode: Literal["hybrid", "dense", "sparse"] = "hybrid"
     w_dense: float = Field(1.0, ge=0)
     w_sparse: float = Field(1.0, ge=0)

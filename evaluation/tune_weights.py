@@ -97,7 +97,7 @@ def _set(config: dict, knob: str, value) -> None:
 
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--strategy", choices=["recursive", "fixed"], default="recursive")
+    p.add_argument("--strategy", choices=["recursive", "fixed"], default="fixed")
     args = p.parse_args()
 
     from app.ingestion.embedding import DenseEmbedder, SparseEmbedder

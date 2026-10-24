@@ -14,7 +14,9 @@ import argparse
 import json
 import statistics
 import time
+from collections.abc import Iterable, Iterator
 from dataclasses import asdict
+from itertools import islice
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -167,22 +169,25 @@ def index(paths: "_Paths", settings, strategies: list[ChunkingStrategy], batch_d
 
     from app.ingestion.embedding import DenseEmbedder, SparseEmbedder
 
-    docs = paths.read_docs()
+    # Documents are streamed from docs.jsonl one batch at a time, never all in memory: the full
+    # corpus as Python objects is well over 1 GB, and a run was killed for low system memory.
+    n_docs = paths.count_docs()
     tokenizer = load_tokenizer(settings.dense_model)
     dense = DenseEmbedder(settings.dense_model)
     sparse = SparseEmbedder(settings.sparse_model)
     store = QdrantStore.from_settings(settings)
     store.ensure_collections(dense.dim)
-    print(f"Indexing {len(docs):,} docs into {settings.qdrant_url} (dense on {dense.device})")
+    print(f"Indexing {n_docs:,} docs into {settings.qdrant_url} (dense on {dense.device})")
 
     counts = store.chunk_counts_by_hash()  # what a previous (possibly interrupted) run finished
 
-    stats: dict = {"documents": len(docs), "doc_tokens": [], "strategies": {}}
+    stats: dict = {"documents": n_docs, "doc_tokens": [], "strategies": {}}
     for strategy in strategies:
-        todo = [d for d in docs if strategy.value not in counts.get(d["sha256"], {})]
+        done = sum(strategy.value in per_strategy for per_strategy in counts.values())
+        todo = (d for d in paths.iter_docs() if strategy.value not in counts.get(d["sha256"], {}))
         n_chunks, chunk_tokens, started = 0, [], time.time()
-        for i in tqdm(range(0, len(todo), batch_docs), desc=strategy.value, unit="batch"):
-            batch = todo[i : i + batch_docs]
+        total_batches = -(-(n_docs - done) // batch_docs)  # ceiling division
+        for batch in tqdm(_batched(todo, batch_docs), total=total_batches, desc=strategy.value, unit="batch"):
             pending: list[tuple[dict, object]] = []
             for d in batch:
                 chunks = chunk(_structured(d), tokenizer, strategy, settings.chunk_size, settings.chunk_overlap)
@@ -206,7 +211,7 @@ def index(paths: "_Paths", settings, strategies: list[ChunkingStrategy], batch_d
             "seconds": round(time.time() - started),
         }  # fmt: skip
 
-    doc_tokens = [len(tokenizer(d["text"], add_special_tokens=False)["input_ids"]) for d in docs]
+    doc_tokens = [len(tokenizer(d["text"], add_special_tokens=False)["input_ids"]) for d in paths.iter_docs()]
     stats["doc_tokens"] = _summary(doc_tokens)
     paths.write_json(paths.stats, stats)
     print(json.dumps(stats, indent=2))
@@ -292,14 +297,25 @@ class _Paths:
                 }  # fmt: skip
                 f.write(json.dumps(row, ensure_ascii=False) + "\n")
 
-    def read_docs(self) -> list[dict]:
+    def iter_docs(self) -> Iterator[dict]:
         with self.docs.open(encoding="utf-8") as f:
-            return [json.loads(line) for line in f]
+            for line in f:
+                yield json.loads(line)
+
+    def count_docs(self) -> int:
+        with self.docs.open(encoding="utf-8") as f:
+            return sum(1 for _ in f)
 
     @staticmethod
     def write_json(path: Path, data) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def _batched(items: Iterable[dict], size: int) -> Iterator[list[dict]]:
+    iterator = iter(items)
+    while batch := list(islice(iterator, size)):
+        yield batch
 
 
 def _now() -> str:

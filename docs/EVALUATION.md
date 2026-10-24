@@ -111,10 +111,41 @@ retrieved text as data and stay grounded (`BACKEND.md` §7).
 ## 7. Configurations compared (E5) + cost control
 
 Two axes, compared mainly on the **cheap LLM-free retrieval eval**:
-1. **Chunking A vs. B** (D9) — expect B to win on **Recall@K / MRR**, compared at **full 50k scale in
+1. **Chunking A vs. B** (D9) — expected B to win (measured: a tie, §7.1) on **Recall@K / MRR**, compared at **full 50k scale in
    local Qdrant** (a 2k sample is too easy: dense-only already reached R@10 ≈ 0.94 there, so every config
    landed within a few questions of each other). Not on §4.2, which can't separate them here.
 2. **Hybrid vs. dense-only** (D7/D8) — expect hybrid to win on keyword/entity questions.
+
+### 7.1 Measured (Phase 2a, 50k articles, local Qdrant)
+
+Tuning set (100 questions), `evaluation.quick_retrieval`, document-level metrics:
+
+| config | recursive R@10 | recursive MRR | fixed R@10 | fixed MRR |
+|---|---|---|---|---|
+| dense only | 0.845 | 0.885 | 0.765 | 0.863 |
+| hybrid (RRF) | 0.875 | 0.860 | 0.885 | 0.842 |
+| hybrid + features | 0.865 | 0.867 | 0.900 | 0.887 |
+| full pipeline (+ cross-encoder) | 0.900 | 0.923 | 0.915 | 0.953 |
+
+Weight tuning (`evaluation.tune_weights`, objective R@20 after the per-article cap), reported on the
+300-question retrieval set the weights never saw:
+
+| config | recursive R@20 | recursive MRR | fixed R@20 | fixed MRR |
+|---|---|---|---|---|
+| RRF only (no features) | 0.922 | 0.912 | 0.908 | 0.889 |
+| default feature weights | 0.938 | 0.928 | 0.922 | 0.928 |
+| tuned feature weights | 0.927 | 0.921 | 0.920 | 0.945 |
+
+Findings:
+- **Hybrid beats dense-only**, and the gap is largest for fixed (dense-only R@10 0.765 → 0.915): 235-token
+  windows blur the embedding, and BM25 recovers the entity matches.
+- **The custom feature re-ranker beats plain RRF on held-out questions** for both strategies (R@20 and MRR).
+- **Tuning on 100 questions overfits**: for recursive it switched BM25 off (`w_sparse = 0`), which won on
+  the tuning set and lost on the held-out set. The **default weights are kept**.
+- **Chunking A vs. B is a tie on recall** (within 1–2 questions at this sample size). The hypothesis that
+  recursive wins was **not confirmed** here — consistent with §4.2: the gold evidence sits in each
+  article's lead, which both strategies keep intact. **Fixed is deployed**: same quality, 300,059 chunks
+  vs. 433,425 (~30% less storage on the 1 GB free cluster).
 
 The expensive `/ask` eval runs on the **primary config only**. Budget math: 2 configs × 50 × ~4–6 calls +
 judges **> 1,000 LLM calls** would break Gemini's free tier — so retrieval comparison is LLM-free, `/ask`

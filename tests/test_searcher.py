@@ -63,12 +63,12 @@ def store():
     return s
 
 
-def test_hybrid_search_returns_traced_candidates_of_one_strategy(store):
+def test_hybrid_search_returns_traced_candidates_of_the_default_strategy(store):
     result = Searcher(store, FakeDense(), FakeSparse()).search(
         "river delta", SearchParams(cross_encoder=False, max_per_doc=None)
     )
     assert result.results[0].title == "River"
-    assert all(c.payload["chunking_strategy"] == "recursive" for c in result.results)
+    assert all(c.payload["chunking_strategy"] == "fixed" for c in result.results)
     top = result.results[0].trace()
     assert top["dense"]["rank"] is not None and top["rrf"]["score"] > 0
     assert set(result.timings_ms) >= {"embed", "qdrant", "fusion", "feature_rerank"}
