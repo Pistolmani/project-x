@@ -9,12 +9,13 @@ configurations (hybrid vs dense-only, with/without each re-ranker) on the same c
 
 import time
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import Literal
 
 from pydantic import BaseModel, Field
 from qdrant_client import models
 
+from app.cache import Cache, make_key
 from app.ingestion.chunking import ChunkingStrategy
 from app.retrieval.candidate import Candidate
 from app.retrieval.features import FeatureReranker
@@ -55,14 +56,30 @@ class SearchResult:
 
 
 class Searcher:
-    def __init__(self, store: QdrantStore, dense, sparse, cross_encoder=None):
+    def __init__(self, store: QdrantStore, dense, sparse, cross_encoder=None, cache: Cache | None = None):
         self.store = store
         self.dense = dense
         self.sparse = sparse
         self.cross_encoder = cross_encoder
+        self.cache = cache
 
     def search(self, query: str, params: SearchParams | None = None) -> SearchResult:
         params = params or SearchParams()
+        key = None
+        if self.cache is not None:
+            # The corpus generation is part of the key: any document write invalidates old results.
+            key = make_key(query, params.model_dump(mode="json"), self.cache.generation("corpus"))
+            hit = self.cache.get("search", key)
+            if hit is not None:
+                results = [Candidate(**c) for c in hit["results"]]
+                return SearchResult(query, params, results, hit["stage_sizes"], {"cache_hit": 0.0})
+        result = self._search(query, params)
+        if key is not None:
+            self.cache.set("search", key, {"results": [asdict(c) for c in result.results],
+                                           "stage_sizes": result.stage_sizes})  # fmt: skip
+        return result
+
+    def _search(self, query: str, params: SearchParams) -> SearchResult:
         timings: dict[str, float] = {}
 
         with _timed(timings, "embed"):
