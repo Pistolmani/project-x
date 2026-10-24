@@ -14,7 +14,7 @@ from contextlib import asynccontextmanager
 from dataclasses import asdict
 from pathlib import Path
 
-from fastapi import FastAPI, File, Query, Request, UploadFile
+from fastapi import FastAPI, File, Form, Query, Request, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
 from qdrant_client.http.exceptions import ResponseHandlingException, UnexpectedResponse
 
@@ -118,8 +118,8 @@ def create_app(engine=None, ingestion=None) -> FastAPI:
         return StreamingResponse(generate(), media_type="text/event-stream")
 
     @app.post("/documents", response_model=IngestResponse, status_code=201)
-    def add_document(request: Request, file: UploadFile = File(...)):
-        result = request.app.state.ingestion.add(file.file.read(), file.filename or "upload.txt")
+    def add_document(request: Request, file: UploadFile = File(...), tag: str | None = Form(None)):
+        result = request.app.state.ingestion.add(file.file.read(), file.filename or "upload.txt", tag=tag)
         if result.status == "duplicate":
             return JSONResponse(status_code=200, content=asdict(result))
         return IngestResponse(**asdict(result))

@@ -78,3 +78,10 @@ def test_delete_removes_chunks_and_registry(service):
         service.delete(doc_id)
     with pytest.raises(DocumentNotFound):
         service.update(doc_id, DOC_V2, "jaws.md")
+
+
+def test_tag_is_recorded_and_survives_an_update(service):
+    doc_id = service.add(DOC_V1, "jaws.md", tag="eval_planted").doc_id
+    assert service.store.get_document(doc_id)["tag"] == "eval_planted"
+    service.update(doc_id, DOC_V2, "jaws.md")
+    assert service.store.get_document(doc_id)["tag"] == "eval_planted"

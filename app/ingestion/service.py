@@ -46,7 +46,9 @@ class IngestionService:
         self.strategies = strategies or [ChunkingStrategy.FIXED]
         self.cache = cache
 
-    def add(self, data: bytes, filename: str) -> IngestResult:
+    def add(self, data: bytes, filename: str, tag: str | None = None) -> IngestResult:
+        """`tag` labels a document in the registry, e.g. "eval_planted" for the evaluation's planted
+        conflict/injection documents, so they can be listed and removed as a group."""
         doc = load(data, filename)
         text = render(doc.sections).text
         sha = content_hash(text)
@@ -57,7 +59,7 @@ class IngestionService:
         doc_id = str(uuid.uuid4())
         counts = self._index(doc_id, doc, version=1)
         now = _now()
-        self.store.upsert_documents([_record(doc_id, doc, sha, 1, counts, created=now, updated=now)])
+        self.store.upsert_documents([_record(doc_id, doc, sha, 1, counts, created=now, updated=now) | {"tag": tag}])
         self._changed()
         return IngestResult(doc_id, "created", 1, doc.title, counts)
 
@@ -73,7 +75,8 @@ class IngestionService:
         version = current.get("version", 1) + 1
         counts = self._index(doc_id, doc, version)  # 1. new chunks, alongside the old ones
         self.store.upsert_documents([_record(doc_id, doc, sha, version, counts,  # 2. registry points at them
-                                             created=current.get("created_at"), updated=_now())])  # fmt: skip
+                                             created=current.get("created_at"), updated=_now())
+                                     | {"tag": current.get("tag")}])  # fmt: skip
         self.store.delete_old_versions(doc_id, keep_version=version)  # 3. only now drop the old ones
         self._changed()
         return IngestResult(doc_id, "updated", version, doc.title, counts)
