@@ -1,0 +1,34 @@
+"""Typed settings read from the environment / `.env` (decision A5). Secrets never have defaults."""
+
+from functools import lru_cache
+from pathlib import Path
+
+from pydantic import SecretStr
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from app import PROJECT_ROOT
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=PROJECT_ROOT / ".env", extra="ignore")
+
+    qdrant_url: str = "http://localhost:6333"
+    qdrant_api_key: SecretStr | None = None
+    gemini_api_key: SecretStr | None = None
+    groq_api_key: SecretStr | None = None
+
+    dense_model: str = "BAAI/bge-small-en-v1.5"
+    sparse_model: str = "Qdrant/bm25"
+
+    chunk_size: int = 256  # tokens, counted with the dense model's own tokenizer (A2)
+    chunk_overlap: int = 32  # fixed strategy only
+
+    chunks_collection: str = "chunks"
+    documents_collection: str = "documents"
+
+    data_dir: Path = PROJECT_ROOT / "data"
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
