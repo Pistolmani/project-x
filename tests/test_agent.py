@@ -78,6 +78,7 @@ def test_multi_hop_answer_with_citations_from_two_searches():
     out = ask(llm)
     assert out.status == "answered"
     assert [c.title for c in out.citations] == ["Jaws (film)", "Steven Spielberg"]
+    assert out.citations[0].chunk_index == 0 and out.citations[0].start_char is None  # fake chunks carry no offsets
     assert out.searched == ["Jaws director", "Steven Spielberg birth"]
     assert out.gates["retrieval"]["passed"] and out.usage["llm_calls"] == 4
 

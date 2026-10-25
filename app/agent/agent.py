@@ -45,6 +45,11 @@ class Citation:
     title: str
     text: str
     ce_score: float | None
+    # Where the chunk sits in its article (chunk text == article text[start_char:end_char]); lets the UI
+    # merge overlapping chunks of one article. None for records without offsets.
+    chunk_index: int | None = None
+    start_char: int | None = None
+    end_char: int | None = None
 
 
 @dataclass
@@ -260,4 +265,5 @@ def _parse_submit(args: dict) -> dict | str:
 
 def _citation(toolbox: Toolbox, handle: str) -> Citation:
     s = toolbox.sources[handle]
-    return Citation(handle, s.point_id, s.doc_id, s.title, s.text, s.ce_score)
+    return Citation(handle, s.point_id, s.doc_id, s.title, s.text, s.ce_score, s.payload.get("chunk_index"),
+                    s.payload.get("start_char"), s.payload.get("end_char"))
