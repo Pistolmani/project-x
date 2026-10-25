@@ -10,8 +10,15 @@ With EMBEDDED_API=true it first starts that backend in-process (ui/embedded_api.
 """
 
 import os
+import sys
+from pathlib import Path
 
 import streamlit as st
+
+# `streamlit run` puts only ui/ on sys.path; the repo root is needed for the `ui` and `app` packages.
+ROOT = str(Path(__file__).resolve().parents[1])
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
 
 from ui.client import BackendError, get_client
 from ui.pages.ask import render_ask_page

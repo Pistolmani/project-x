@@ -314,7 +314,8 @@ def test_entry_script_loads_like_streamlit_run():
     code = ("import runpy, sys; sys.path.insert(0, 'ui'); "
             "runpy.run_path('ui/streamlit_app.py', run_name='__main__'); print('ENTRY OK')")  # fmt: skip
     env = {**os.environ, "API_URL": "http://127.0.0.1:9"}  # unreachable: the sidebar shows a warning
-    result = subprocess.run([sys.executable, "-c", code], cwd=root, env=env, capture_output=True, text=True,
+    # -I: no current directory on sys.path, exactly like `streamlit run` on Streamlit Cloud
+    result = subprocess.run([sys.executable, "-I", "-c", code], cwd=root, env=env, capture_output=True, text=True,
                             timeout=120)  # fmt: skip
     assert "ENTRY OK" in result.stdout, result.stderr[-2000:]
 
