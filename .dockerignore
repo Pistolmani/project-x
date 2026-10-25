@@ -1,0 +1,11 @@
+.git
+.venv
+.env
+.env.*
+!.env.example
+data
+qdrant_storage
+.cache
+**/__pycache__
+.pytest_cache
+_Applied AI*.pdf

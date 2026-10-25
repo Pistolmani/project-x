@@ -1,3 +1,14 @@
+---
+title: AI Investigation Engine
+emoji: 🔎
+colorFrom: indigo
+colorTo: gray
+sdk: docker
+app_port: 8501
+pinned: false
+short_description: Cited multi-hop answers over 50k Wikipedia articles
+---
+
 # AI Investigation Engine
 
 An AI system that **investigates large document sets** — not "chat with a PDF." It answers complex

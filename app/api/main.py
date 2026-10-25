@@ -10,6 +10,8 @@ import json
 import logging
 import queue
 import threading
+import time
+from collections import deque
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from pathlib import Path
@@ -24,6 +26,41 @@ from app.ingestion.loaders import LoaderError
 from app.ingestion.service import DocumentNotFound
 
 log = logging.getLogger(__name__)
+
+DEMO_TAG = "demo_upload"  # what the public demo tags uploads with; only these may be changed there
+
+
+class DemoForbidden(Exception):
+    pass
+
+
+class UploadTooLarge(Exception):
+    pass
+
+
+class AskLimited(Exception):
+    pass
+
+
+class HourlyLimit:
+    """Sliding one-hour window over all callers. The UI reaches the API over localhost, so every visitor
+    shares one client IP and a per-IP limit would mean nothing; this caps the shared LLM quota instead."""
+
+    def __init__(self, per_hour: int, clock=time.monotonic):
+        self.per_hour, self.clock = per_hour, clock
+        self.calls: deque[float] = deque()
+        self.lock = threading.Lock()
+
+    def take(self) -> None:
+        if self.per_hour <= 0:
+            return
+        with self.lock:
+            now = self.clock()
+            while self.calls and now - self.calls[0] >= 3600:
+                self.calls.popleft()
+            if len(self.calls) >= self.per_hour:
+                raise AskLimited(int(3600 - (now - self.calls[0])) + 1)
+            self.calls.append(now)
 
 
 def create_app(engine=None, ingestion=None) -> FastAPI:
@@ -43,6 +80,7 @@ def create_app(engine=None, ingestion=None) -> FastAPI:
                                                    cache=built.cache)  # fmt: skip
         else:
             app.state.engine, app.state.ingestion = engine, ingestion
+        app.state.ask_limit = HourlyLimit(_settings(app).ask_limit_per_hour)
         yield
 
     app = FastAPI(title="Investigation Engine", version="0.2", lifespan=lifespan)
@@ -57,6 +95,22 @@ def create_app(engine=None, ingestion=None) -> FastAPI:
     @app.exception_handler(DocumentNotFound)
     def _not_found(request: Request, e: DocumentNotFound):
         return error(404, "document_not_found", f"no document {e.args[0]}")
+
+    @app.exception_handler(DemoForbidden)
+    def _forbidden(request: Request, e: DemoForbidden):
+        return error(403, "demo_read_only", "the public demo only changes documents uploaded there; "
+                                            "the corpus and the evaluation documents are read-only")  # fmt: skip
+
+    @app.exception_handler(UploadTooLarge)
+    def _too_large(request: Request, e: UploadTooLarge):
+        return error(413, "upload_too_large", f"uploads are limited to {e.args[0]:g} MB")
+
+    @app.exception_handler(AskLimited)
+    def _limited(request: Request, e: AskLimited):
+        return JSONResponse(status_code=429, headers={"Retry-After": str(e.args[0])},
+                            content={"error": {"code": "ask_limit", "message": "the demo's hourly question limit "
+                                               f"is used up (it protects the free LLM quota); try again in "
+                                               f"{e.args[0] // 60 + 1} min"}})  # fmt: skip
 
     @app.exception_handler(UnexpectedResponse)
     @app.exception_handler(ResponseHandlingException)
@@ -87,6 +141,7 @@ def create_app(engine=None, ingestion=None) -> FastAPI:
 
     @app.post("/ask")
     def ask(body: AskRequest, request: Request):
+        request.app.state.ask_limit.take()
         answer = request.app.state.engine.agent.ask(body.question, body.params)
         # An LLM or store outage is a 503 that still carries the structured answer (status "error"),
         # never a fabricated reply.
@@ -95,6 +150,7 @@ def create_app(engine=None, ingestion=None) -> FastAPI:
     @app.post("/ask/stream")
     def ask_stream(body: AskRequest, request: Request):
         """Server-Sent Events stream: live progress events while the agent works, then the final answer."""
+        request.app.state.ask_limit.take()
         agent = request.app.state.engine.agent
         events: queue.Queue[dict | None] = queue.Queue()
 
@@ -119,7 +175,9 @@ def create_app(engine=None, ingestion=None) -> FastAPI:
 
     @app.post("/documents", response_model=IngestResponse, status_code=201)
     def add_document(request: Request, file: UploadFile = File(...), tag: str | None = Form(None)):
-        result = request.app.state.ingestion.add(file.file.read(), file.filename or "upload.txt", tag=tag)
+        if _settings(request.app).demo_mode:
+            tag = DEMO_TAG  # visitors cannot label an upload as corpus or eval data
+        result = request.app.state.ingestion.add(_read(request, file), file.filename or "upload.txt", tag=tag)
         if result.status == "duplicate":
             return JSONResponse(status_code=200, content=asdict(result))
         return IngestResponse(**asdict(result))
@@ -150,11 +208,13 @@ def create_app(engine=None, ingestion=None) -> FastAPI:
 
     @app.put("/documents/{doc_id}", response_model=IngestResponse)
     def update_document(doc_id: str, request: Request, file: UploadFile = File(...)):
-        result = request.app.state.ingestion.update(doc_id, file.file.read(), file.filename or "upload.txt")
+        _check_mutable(request, doc_id)
+        result = request.app.state.ingestion.update(doc_id, _read(request, file), file.filename or "upload.txt")
         return IngestResponse(**asdict(result))
 
     @app.delete("/documents/{doc_id}", status_code=204)
     def delete_document(doc_id: str, request: Request):
+        _check_mutable(request, doc_id)
         request.app.state.ingestion.delete(doc_id)
 
     @app.get("/eval/results")
@@ -168,6 +228,30 @@ def create_app(engine=None, ingestion=None) -> FastAPI:
         return out
 
     return app
+
+
+def _settings(app: FastAPI):
+    from app.config import get_settings
+
+    return getattr(app.state.engine, "settings", None) or get_settings()
+
+
+def _read(request: Request, file: UploadFile) -> bytes:
+    limit = _settings(request.app).max_upload_mb
+    data = file.file.read(int(limit * 1024 * 1024) + 1)
+    if len(data) > limit * 1024 * 1024:
+        raise UploadTooLarge(limit)
+    return data
+
+
+def _check_mutable(request: Request, doc_id: str) -> None:
+    if not _settings(request.app).demo_mode:
+        return
+    record = request.app.state.engine.store.get_document(doc_id)
+    if record is None:
+        raise DocumentNotFound(doc_id)
+    if record.get("tag") != DEMO_TAG:
+        raise DemoForbidden(doc_id)
 
 
 def _jsonable(value):

@@ -39,6 +39,13 @@ class Settings(BaseSettings):
     results_dir: Path = PROJECT_ROOT / "results"
     cache_path: Path = PROJECT_ROOT / "data" / "cache.sqlite"
 
+    # Public demo (the HF Space): visitors may only change documents they uploaded there, and /ask is capped
+    # so one visitor cannot spend the shared free-tier LLM quota. Off locally, so the eval scripts can plant
+    # and remove their documents.
+    demo_mode: bool = False
+    ask_limit_per_hour: int = 0  # across all visitors; 0 = unlimited
+    max_upload_mb: float = 10
+
 
 @lru_cache
 def get_settings() -> Settings:

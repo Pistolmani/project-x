@@ -66,11 +66,11 @@ class LLM:
                                                            "citations": ["S1"]})], "scripted", "m")  # fmt: skip
 
 
-def make_client(fail_llm=False):
+def make_client(fail_llm=False, **overrides):
     store = QdrantStore(QdrantClient(":memory:"))
     store.ensure_collections(len(VOCAB))
     cache = Cache()
-    settings = Settings(chunk_size=40, chunk_overlap=5, _env_file=None)
+    settings = Settings(chunk_size=40, chunk_overlap=5, _env_file=None, **overrides)
     searcher = Searcher(store, Dense(), Sparse(), cache=cache)
     llm = LLM(fail_llm)
     engine = SimpleNamespace(store=store, searcher=searcher, agent=Agent(llm, searcher, store), cache=cache,
@@ -172,3 +172,47 @@ def test_ask_stream_reports_an_unexpected_failure_as_an_error_event(client):
         events = [json.loads(line.removeprefix("data: ")) for line in r.iter_lines() if line.startswith("data: ")]
     assert [e["type"] for e in events] == ["progress", "error"]
     assert events[-1]["code"] == "internal_error" and "RuntimeError" in events[-1]["message"]
+
+
+def test_demo_mode_only_changes_documents_uploaded_there():
+    with make_client(demo_mode=True) as c:
+        ingestion = c.app.state.ingestion
+        corpus_id = ingestion.add(b"# River\n\nThe river delta floods.\n", "river.md").doc_id
+        planted_id = ingestion.add(b"# Delta\n\nA delta film from 1975.\n", "delta.md", tag="eval_planted").doc_id
+        assert c.delete(f"/documents/{corpus_id}").status_code == 403
+        r = c.put(f"/documents/{planted_id}", files={"file": ("x.md", b"# X\n\nchanged\n")})
+        assert r.status_code == 403 and r.json()["error"]["code"] == "demo_read_only"
+
+        # a visitor's own upload is tagged as such, whatever tag they send, and stays fully editable
+        mine = c.post("/documents", files={"file": ("jaws.md", JAWS)}, data={"tag": "eval_planted"}).json()["doc_id"]
+        assert c.app.state.engine.store.get_document(mine)["tag"] == "demo_upload"
+        assert c.put(f"/documents/{mine}", files={"file": ("jaws.md", JAWS + b"Sequel 1978.\n")}).status_code == 200
+        assert c.delete(f"/documents/{mine}").status_code == 204
+        assert c.delete(f"/documents/{mine}").status_code == 404
+
+
+def test_uploads_over_the_size_cap_are_a_413():
+    with make_client(max_upload_mb=0.001) as c:
+        r = c.post("/documents", files={"file": ("big.txt", b"word " * 400)})
+        assert r.status_code == 413 and r.json()["error"]["code"] == "upload_too_large"
+
+
+def test_ask_is_capped_per_hour_across_all_callers():
+    with make_client(ask_limit_per_hour=2) as c:
+        assert c.post("/ask", json={"question": "Who directed Jaws?"}).status_code == 200
+        assert c.post("/ask/stream", json={"question": "Who directed Jaws?"}).status_code == 200
+        r = c.post("/ask", json={"question": "Who directed Jaws?"})
+        assert r.status_code == 429 and r.json()["error"]["code"] == "ask_limit" and int(r.headers["retry-after"]) > 0
+
+
+def test_hourly_limit_frees_slots_after_an_hour():
+    from app.api.main import AskLimited, HourlyLimit
+
+    now = [0.0]
+    limit = HourlyLimit(1, clock=lambda: now[0])
+    limit.take()
+    with pytest.raises(AskLimited):
+        limit.take()
+    now[0] = 3600
+    limit.take()
+
