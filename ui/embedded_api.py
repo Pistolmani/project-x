@@ -16,6 +16,18 @@ PORT = 8000
 STARTUP_TIMEOUT_S = 300  # first start downloads ~1.2 GB of models, then loads them
 
 
+def export_secrets(secrets) -> None:
+    """Copy top-level Streamlit secrets into the environment, where the backend's settings read them.
+    Streamlit does this itself only once something reads `st.secrets`; real environment variables win."""
+    try:
+        items = list(secrets.items())
+    except Exception:  # no secrets configured (local runs): StreamlitSecretNotFoundError
+        return
+    for key, value in items:
+        if isinstance(value, (str, int, float, bool)):
+            os.environ.setdefault(key, str(value))
+
+
 def start(app, port: int = PORT, timeout_s: float = STARTUP_TIMEOUT_S):
     """Serve `app` from a daemon thread and block until /health answers."""
     import uvicorn

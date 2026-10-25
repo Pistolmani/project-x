@@ -337,3 +337,21 @@ def test_embedded_backend_serves_the_api_from_a_thread():
         assert health["status"] == "ok" and health["documents"] == 0
     finally:
         server.should_exit = True
+
+
+def test_streamlit_secrets_reach_the_backend_settings(monkeypatch):
+    import os
+
+    from ui.embedded_api import export_secrets
+
+    monkeypatch.delenv("EMBEDDED_API", raising=False)
+    monkeypatch.setenv("MODEL_BACKEND", "torch")  # a real environment variable wins over a secret
+    export_secrets({"EMBEDDED_API": True, "MODEL_BACKEND": "onnx", "section": {"nested": "ignored"}})
+    assert os.environ["EMBEDDED_API"] == "True" and os.environ["MODEL_BACKEND"] == "torch"
+    assert "section" not in os.environ
+
+    class Missing:
+        def items(self):
+            raise FileNotFoundError("no secrets.toml")
+
+    export_secrets(Missing())  # local runs without secrets: no error

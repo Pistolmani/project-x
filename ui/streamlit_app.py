@@ -27,9 +27,10 @@ from ui.pages.evaluation import render_evaluation_page
 
 st.set_page_config(page_title="AI Investigation Engine", page_icon="🔎", layout="wide")
 
-if os.environ.get("EMBEDDED_API", "").lower() == "true":
-    from ui.embedded_api import ensure_backend
+from ui.embedded_api import ensure_backend, export_secrets
 
+export_secrets(st.secrets)
+if os.environ.get("EMBEDDED_API", "").lower() == "true":
     ensure_backend()
 
 

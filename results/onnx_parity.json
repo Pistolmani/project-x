@@ -1,0 +1,70 @@
+{
+  "what": "MODEL_BACKEND=onnx (FastEmbed, the Streamlit Cloud deployment) vs torch (sentence-transformers, used for the Evaluation Report)",
+  "date": "2026-10-25",
+  "index": "Qdrant Cloud, fixed strategy (300,059 chunks)",
+  "dense_embeddings": {
+    "questions": 30,
+    "min_cosine_torch_vs_onnx": 1.0
+  },
+  "retrieval_tuning_set_100": {
+    "dense only": {
+      "onnx_cloud": {
+        "R@10": 0.795,
+        "R@20": 0.82,
+        "MRR": 0.861
+      },
+      "torch_cloud": {
+        "R@10": 0.795,
+        "R@20": 0.82,
+        "MRR": 0.861
+      },
+      "torch_local_report": {
+        "R@10": 0.765,
+        "R@20": 0.8,
+        "MRR": 0.863
+      }
+    },
+    "full pipeline": {
+      "onnx_cloud": {
+        "R@10": 0.92,
+        "R@20": 0.935,
+        "MRR": 0.956
+      },
+      "torch_local_report": {
+        "R@10": 0.915,
+        "R@20": 0.935,
+        "MRR": 0.953
+      }
+    },
+    "note": "torch and onnx are identical on the same (cloud) index; the small shift from the report comes from the cloud index (int8 vectors in RAM, its own HNSW graph), not from ONNX."
+  },
+  "cross_encoder_logits": {
+    "pairs_sampled": 60,
+    "max_abs_diff_sample": 0.13
+  },
+  "relevance_floor_3.92": {
+    "questions": 163,
+    "positives": 100,
+    "negatives": 63,
+    "pass_rate_torch": 0.94,
+    "pass_rate_onnx": 0.95,
+    "block_rate_torch": 0.714,
+    "block_rate_onnx": 0.714,
+    "top_score_max_abs_diff": 0.166,
+    "top_score_mean_abs_diff": 0.007,
+    "decisions_flipped": 1,
+    "note": "torch scores were computed on the local index, onnx on the cloud index"
+  },
+  "memory_streamlit_plus_api_3_cold_asks": {
+    "peak_mb_reranker_batch_32": 2458,
+    "peak_mb_reranker_batch_8": 2132,
+    "rss_after_startup_mb": 1691,
+    "host_limit_mb": 2765,
+    "measured_on": "Windows, local; same packages as requirements.txt"
+  },
+  "latency_cold_ask_ms_cpu": [
+    8325,
+    50323,
+    44834
+  ]
+}
