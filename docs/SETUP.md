@@ -91,7 +91,7 @@ Cloud is free, deploys straight from the GitHub repo, and redeploys on every pus
 | Streamlit Cloud | The app's answer |
 |---|---|
 | Runs only `streamlit run <file>` — one process | `EMBEDDED_API=true`: the entry script starts the FastAPI backend in a background thread on `127.0.0.1:8000` (`ui/embedded_api.py`). The UI still talks to it over HTTP, so it stays a thin client, exactly as with two processes. |
-| ~2.7 GB RAM, CPU only | `MODEL_BACKEND=onnx`: bge-small, BM25 and bge-reranker-base run through FastEmbed/ONNX, so torch is not installed (`requirements.txt` is the slim runtime; `requirements-dev.txt` adds torch for local GPU ingestion). Measured peak: **2.13 GB** with Streamlit + API + three cold `/ask` calls (re-ranker batch 8; batch 32 peaked at 2.46 GB). |
+| ~2.7 GB RAM, CPU only | `MODEL_BACKEND=onnx`: bge-small, BM25 and bge-reranker-base run through FastEmbed/ONNX, so torch is not installed (`requirements.txt` is the slim runtime; `requirements-dev.txt` adds torch for local GPU ingestion). Measured peak: **2.13 GB** with Streamlit + API + three cold `/ask` calls (re-ranker batch 8; batch 32 peaked at 2.46 GB). Uploads first ran the embedder 128 chunks at a time, which peaked at 3.7 GB and took the live app over its limit; with onnxruntime's memory arena off, 16 chunks at a time and one inference at a time, an upload no longer raises the peak (`results/onnx_parity.json`, `memory_upload_fix`). |
 | Same results as the evaluated system | ONNX vs torch on the cloud index: identical dense retrieval (dense-only R@10 0.795 for both), full pipeline R@10 0.920 / MRR 0.956 vs 0.915 / 0.953 in the report; re-ranker logits within ~0.13. Details in `results/onnx_parity.json`. |
 | Public: anyone can use it | `DEMO_MODE=true`: visitors can only update/delete documents they uploaded there (tag `demo_upload`); the corpus and the eval's planted documents return 403. `ASK_LIMIT_PER_HOUR=60` caps `/ask` across all visitors (they share one localhost client IP) to protect the free LLM quota; uploads capped at 10 MB. |
 
@@ -120,7 +120,7 @@ there. Locally the project uses 3.11.
 | **Gemini free-tier rate limits** | The eval makes >1,000 LLM calls. | LLM-free retrieval eval, single-config `/ask`, caching, Groq fallback (`EVALUATION.md` §7, `BACKEND.md` §8). |
 | **Qdrant RAM (1 GB) and disk (4 GB)** | ~490k recursive chunks; float32 vectors in RAM alone would nearly fill it, and both strategies (~3.9 GB est.) are too close to the disk limit. | int8 vectors in RAM, **originals + payload + sparse index on disk**; compare chunking **locally at 50k**, push **only the winner** to the cloud (`DATABASE.md` §7). |
 | **Host CPU for embedding** | Too slow for 50k docs. | Offline/Colab ingestion (§4); the host only embeds queries and visitors' uploads. |
-| **Host RAM (~2.7 GB) and CPU latency** | Re-ranking 20 passages per search on 2 shared CPU cores; a multi-hop `/ask` takes ~30–60 s locally on CPU. | ONNX models, re-ranker batch 8 (§5); progress streams to the UI while the agent works. |
+| **Host RAM (~2.7 GB) and CPU latency** | Re-ranking 20 passages per search on 2 shared CPU cores; a multi-hop `/ask` takes ~30–60 s locally on CPU. | ONNX models, re-ranker batch 8, embed batch 16, memory arena off, one inference at a time (§5); progress streams to the UI while the agent works. |
 | **Shared LLM quota on a public URL** | One visitor could spend the day's free Gemini/Groq requests. | `ASK_LIMIT_PER_HOUR` (60) plus the answer cache. |
 
 ---

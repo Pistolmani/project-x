@@ -3,8 +3,15 @@
 Heavy libraries are imported inside the constructors so importing this module stays cheap.
 """
 
+import threading
+
 # bge v1.5 recommends this prefix for short retrieval queries; passages are embedded as-is.
 BGE_QUERY_INSTRUCTION = "Represent this sentence for searching relevant passages: "
+
+# ONNX (CPU host with ~2.7 GB): onnxruntime's memory arena keeps every peak it has seen, so it is turned
+# off, and one inference runs at a time, so concurrent requests cannot stack their peaks.
+ONNX_OPTIONS = {"enable_cpu_mem_arena": False}
+INFERENCE_LOCK = threading.Lock()
 
 
 class DenseEmbedder:
@@ -12,13 +19,15 @@ class DenseEmbedder:
     deployments without torch). Both give the same normalized vectors (results/onnx_parity.json), so
     queries embedded either way search the same index."""
 
-    def __init__(self, model_name: str, device: str | None = None, batch_size: int = 128, backend: str = "torch"):
+    def __init__(self, model_name: str, device: str | None = None, batch_size: int | None = None,
+                 backend: str = "torch"):  # fmt: skip
         self.backend = backend
-        self.batch_size = batch_size
+        # ONNX: an upload embedded 128 chunks at a time peaked at 3.7 GB; 16 at a time stays near startup
+        self.batch_size = batch_size or (16 if backend == "onnx" else 128)
         if backend == "onnx":
             from fastembed import TextEmbedding
 
-            self.model = TextEmbedding(model_name)
+            self.model = TextEmbedding(model_name, **ONNX_OPTIONS)
             self._dim = len(next(iter(self.model.embed(["dimension probe"]))))
             return
         import torch
@@ -38,7 +47,8 @@ class DenseEmbedder:
         if self.backend == "onnx":
             import numpy as np
 
-            vectors = np.array(list(self.model.embed(texts, batch_size=self.batch_size)), dtype="float32")
+            with INFERENCE_LOCK:
+                vectors = np.array(list(self.model.embed(texts, batch_size=self.batch_size)), dtype="float32")
             return (vectors / np.linalg.norm(vectors, axis=1, keepdims=True)).tolist()
         vectors = self.model.encode(
             texts, batch_size=self.batch_size, normalize_embeddings=True, convert_to_numpy=True

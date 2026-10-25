@@ -66,5 +66,29 @@
     8325,
     50323,
     44834
-  ]
+  ],
+  "memory_upload_fix": {
+    "what": "peak RSS of the two ONNX models: load, 3 re-rank passes of 40 passages, then embedding 2000 upload-sized chunks",
+    "arena_on_embed_batch_128": {
+      "startup_peak_mb": 2026,
+      "after_rerank_rss_mb": 1715,
+      "embed_peak_mb": 3677,
+      "embed_2000_s": 183
+    },
+    "arena_off_embed_batch_128": {
+      "startup_peak_mb": 1985,
+      "after_rerank_rss_mb": 1532,
+      "embed_peak_mb": 2608,
+      "embed_2000_s": 207
+    },
+    "arena_off_embed_batch_16": {
+      "startup_peak_mb": 1995,
+      "after_rerank_rss_mb": 1531,
+      "embed_peak_mb": 1995,
+      "embed_2000_s": 240
+    },
+    "chosen": "arena off, embed batch 16, one inference at a time (no effect on scores: same model, same weights)",
+    "cause": "the deployed app went over Streamlit Cloud's memory limit; uploads were embedded 128 chunks at a time",
+    "measured_on": "Windows, local, 2026-10-25"
+  }
 }

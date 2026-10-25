@@ -24,7 +24,9 @@ class CrossEncoderReranker:
         if backend == "onnx":
             from fastembed.rerank.cross_encoder import TextCrossEncoder
 
-            self.model = TextCrossEncoder(model_name)  # returns raw logits, truncates at 512 tokens
+            from app.ingestion.embedding import ONNX_OPTIONS
+
+            self.model = TextCrossEncoder(model_name, **ONNX_OPTIONS)  # returns raw logits, truncates at 512 tokens
             return
         import torch
         from sentence_transformers import CrossEncoder
@@ -39,7 +41,10 @@ class CrossEncoderReranker:
         if not texts:
             return []
         if self.backend == "onnx":
-            return [float(s) for s in self.model.rerank(query, texts, batch_size=self.batch_size)]
+            from app.ingestion.embedding import INFERENCE_LOCK
+
+            with INFERENCE_LOCK:
+                return [float(s) for s in self.model.rerank(query, texts, batch_size=self.batch_size)]
         scores = self.model.predict(
             [(query, t) for t in texts],
             batch_size=self.batch_size,

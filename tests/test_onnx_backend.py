@@ -14,11 +14,11 @@ sys.modules["sentence_transformers"] = None
 import fastembed, fastembed.rerank.cross_encoder as fce
 
 class FakeEmbedding:
-    def __init__(self, name): pass
+    def __init__(self, name, **options): assert options == {'enable_cpu_mem_arena': False}
     def embed(self, texts, batch_size=None): return [[3.0, 4.0] for _ in texts]
 
 class FakeCrossEncoder:
-    def __init__(self, name): pass
+    def __init__(self, name, **options): assert options == {'enable_cpu_mem_arena': False}
     def rerank(self, query, texts, batch_size=None): return [float(len(t)) for t in texts]
 
 fastembed.TextEmbedding = FakeEmbedding
@@ -26,6 +26,7 @@ fce.TextCrossEncoder = FakeCrossEncoder
 from app.ingestion.embedding import DenseEmbedder
 from app.retrieval.cross_encoder import CrossEncoderReranker
 dense = DenseEmbedder("m", backend="onnx")
+assert dense.batch_size == 16
 assert dense.dim == 2 and [round(x, 6) for x in dense.embed_query("q")] == [0.6, 0.8]  # normalized
 assert CrossEncoderReranker(backend="onnx").score("q", ["ab", "abcd"]) == [2.0, 4.0]
 print("ok")
