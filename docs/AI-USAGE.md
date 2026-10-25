@@ -226,3 +226,33 @@
 **Tools / models used**
 - Claude Code (Claude Opus 5.5); engine LLMs Gemini 3.5 Flash-Lite / Flash and Groq gpt-oss-120b; judge
   Groq gpt-oss-120b.
+
+### 2026-10-25 — Session 8: Phase 5 (deployment) and live-demo fixes
+
+**What the AI did (Claude Code, Claude Opus 5.5)**
+- Noticed the API keys had been written into the tracked `.env.example` (never committed) and had the
+  human move them to the git-ignored `.env`.
+- Built the public-demo guards (corpus and eval documents read-only, upload cap, shared hourly `/ask`
+  limit) and a Dockerfile for an HF Space. The human then found that Docker Spaces need a paid plan, and
+  the AI confirmed it (HF docs and forum, 2026). It laid out the options. The human chose Streamlit
+  Community Cloud.
+- To fit its ~2.7 GB, CPU-only host, the AI added an ONNX model backend (FastEmbed) next to torch, split
+  the requirements into a slim runtime file and a dev file, and started FastAPI inside the Streamlit
+  process. Before deploying, it measured: identical dense retrieval and full-pipeline numbers within
+  0.005, 1 of 163 relevance-floor decisions changed, and peak memory 2.46 GB, which it cut to 2.13 GB by
+  re-ranking in batches of 8 (`results/onnx_parity.json`).
+- Fixed what the live deploy exposed: `streamlit run` puts only `ui/` on `sys.path` (an entry-script test
+  had hidden this by running with the current directory on the path; it now runs isolated). Streamlit
+  only exports secrets to the environment once `st.secrets` is read. Generated a valid `secrets.toml` from
+  `.env` locally, without printing values, after the hand-typed version was rejected as invalid TOML.
+- Explained a passage-quality report from the human ("chunking isn't working"): the chunker worked as
+  designed (256-token windows, 32-token overlap). The UI, though, repeated overlapping neighbours and
+  rendered article text as Markdown. A planned, display-only fix merges overlapping chunks of one article
+  exactly by character offsets, marks cut edges and shows text literally. The evaluated system is unchanged.
+
+**What the human decided / owns**
+- Hosting choice after HF went paid (Streamlit Cloud over Oracle Cloud or paying for HF PRO), creating and
+  configuring the Streamlit app and its secrets, and the display-only scope of the passage fix.
+
+**Tools / models used**
+- Claude Code (Claude Opus 5.5); Streamlit Community Cloud; Qdrant Cloud; FastEmbed / ONNX Runtime.

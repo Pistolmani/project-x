@@ -134,5 +134,5 @@ rebuild reconnects to the same collections and loses nothing (`DATABASE.md` §1)
 
 ## 8. Deliverables checklist
 
-- [ ] GitHub repo · [ ] live Space URL · [ ] README (architecture + rationale) · [ ] Evaluation Report
-      (post-run) · [ ] AI Usage Report (`AI-USAGE.md`).
+- [x] GitHub repo (github.com/Pistolmani/project-x) · [x] live demo (https://project-x-1.streamlit.app)
+      · [x] README (architecture + rationale) · [x] Evaluation Report · [x] AI Usage Report (`AI-USAGE.md`).

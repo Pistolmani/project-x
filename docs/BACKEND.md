@@ -22,16 +22,19 @@
 
 ---
 
-## 2. Deployment topology (how it runs on one Hugging Face Space — D4/A4)
+## 2. Deployment topology (Streamlit Community Cloud — A4)
 
-The Space runs **two processes**: the FastAPI app (the engine) and the Streamlit app (the UI). Streamlit
-talks to FastAPI over `http://localhost:<port>`. Durable state is **not** on the Space — vectors and
-document metadata live in **Qdrant Cloud** (D2/D6), and secrets (Gemini/Groq keys, Qdrant URL + API key)
-are injected as **Space secrets**, never committed (A5). Bulk embedding is done **offline**, not on the
-Space CPU (see `SETUP.md` and §8).
+Planned for a Hugging Face Docker Space (D4). Those became paid in 2026, so the demo runs on **Streamlit
+Community Cloud** (`SETUP.md` §5). It runs only `streamlit run`, so the UI process starts the FastAPI app
+in a background thread (`EMBEDDED_API=true`) and talks to it over `http://127.0.0.1:8000`, the same HTTP
+contract as two processes (locally, or with the `Dockerfile`). Durable state is **not** on the host:
+vectors and document metadata live in **Qdrant Cloud** (D2/D6). Secrets (Gemini/Groq keys, Qdrant URL +
+API key) are app secrets, never committed (A5). The host has ~2.7 GB RAM and no GPU, so models run through
+**ONNX** (`MODEL_BACKEND=onnx`, FastEmbed). That gives the same vectors and re-ranker logits within ~0.13
+of torch (`results/onnx_parity.json`). Bulk embedding is done **offline** (see `SETUP.md` and §8).
 
 ```
-            ┌──────────────── Hugging Face Space (ephemeral compute) ────────────────┐
+            ┌──────────── Streamlit Community Cloud (ephemeral compute) ─────────────┐
   Browser ─►│  Streamlit UI  ──HTTP──►  FastAPI backend ──► bge embed / bge-rerank    │
             │                                  │                                      │
             └──────────────────────────────────┼──────────────────────────────────────┘
@@ -268,7 +271,7 @@ calls**, which can exhaust Gemini's free tier. Mitigations, by design:
   configs mainly on the cheap retrieval metrics.
 - **Caching** (§6) absorbs repeats.
 - **Groq fallback** when Gemini throttles.
-- **Offline bulk embedding** — 50k articles are embedded locally / on free Colab GPU, not on the Space CPU
+- **Offline bulk embedding** — 50k articles are embedded locally / on free Colab GPU, not on the host CPU
   (which would be far too slow), then pushed to Qdrant (`SETUP.md`).
 
 ---

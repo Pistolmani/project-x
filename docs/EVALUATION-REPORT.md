@@ -269,6 +269,14 @@ failure is a refusal of the underlying question, not compliance.
   conflicts (different framing, partial disagreement) would be harder.
 - **Train-split questions** in the contradictory/injection sets (4 + 5) are fine for a retrieval system
   with no training, but they are from a different difficulty mix than dev.
+- **Deployed models.** These runs used torch. The live demo runs the same models through ONNX: identical
+  dense retrieval and full-pipeline R@10 / MRR within 0.005 on the cloud index, with 1 of 163
+  relevance-floor decisions changed (`results/onnx_parity.json`).
+
+**Future work.** Merge neighbouring chunks of one article *before* the model sees them. Fixed-size chunks
+overlap by 32 tokens, so two cited neighbours repeat context and spend tokens. The UI already merges
+them for display, but doing it for the model changes the evaluated system and needs a re-run. Separately,
+render article structure (headings, lists) inside passages.
 
 ---
 

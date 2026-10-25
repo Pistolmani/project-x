@@ -11,8 +11,10 @@
 
 Streamlit gives us a functional, data-app-style UI fast, which is what the spec asks for (document
 management + Q&A + source viewing) — we're graded on the *system*, not pixel polish. It runs as a second
-process on the same Hugging Face Space (D4) and calls FastAPI over `API_URL` (default
-`http://localhost:8000`); the base URL is read from env/settings so the same UI works locally and deployed.
+process next to FastAPI locally, and on Streamlit Community Cloud (which runs only `streamlit run`) it
+starts FastAPI in a background thread of its own process (`EMBEDDED_API=true`, `ui/embedded_api.py`). Either
+way it calls FastAPI over HTTP at `API_URL` (default `http://localhost:8000`), so the same UI works locally
+and deployed.
 
 > **Defense:** *"The UI holds no business logic — it's a thin client over the same API my evaluation suite
 > uses. So what I demo is exactly what I measure."*
@@ -57,9 +59,14 @@ process on the same Hugging Face Space (D4) and calls FastAPI over `API_URL` (de
     queries searched.
   - **Sources conflict (`conflict`):** conflict banner stating both sides (`[S#]`) and the verifier's
     explanation.
-- **Sources & parent document viewer:** each cited `[S#]` expands to show the exact chunk text, its
-  cross-encoder score, and an **Open parent document** button that loads the full article's chunks in
-  order.
+- **Sources & parent document viewer:** each cited passage shows the chunk text, its cross-encoder
+  score, and an **Open parent document** button that loads the full article's chunks in order.
+  Fixed-size chunks overlap by 32 tokens and ignore sentence boundaries, so the display
+  (`ui/passages.py`, display only) **merges overlapping or touching chunks of one article** into one
+  passage labelled with all its ids (`[S1, S2] 1975 in film · chunks #8–9`). The merge is exact, because
+  chunk text is the article text between `start_char` and `end_char`. The display also **marks cut
+  edges with "…"** and **shows the text literally**: line breaks kept and Markdown characters escaped, so
+  list-style articles don't run together.
 - **"How it got here" trace (expandable):** shows live stream events, every search query, each LLM/tool
   step with provider/model, latency and token counts, and the three anti-hallucination gates (citation
   check, relevance floor, verifier) with why each passed or failed.
