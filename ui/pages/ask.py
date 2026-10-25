@@ -6,6 +6,7 @@ from typing import Any
 import streamlit as st
 
 from ui.client import BackendClient, BackendError, get_client
+from ui.passages import as_plain_markdown, excerpt, group_citations, label
 
 EXAMPLES = [
     (
@@ -127,7 +128,7 @@ def _render_answer(client: BackendClient, ans: dict[str, Any], progress_log: lis
         st.success("✅ **Answered (grounded in cited sources)**")
         st.markdown(text)
         if citations:
-            chips = "  ".join(f"`[{c['source_id']}] {c['title']}`" for c in citations)
+            chips = "  ".join(f"`[{', '.join(p.source_ids)}] {p.title}`" for p in group_citations(citations))
             st.caption(f"Cited sources: {chips}")
     elif status == "insufficient":
         st.warning("⚠️ **Not enough evidence — refused to answer**")
@@ -144,15 +145,13 @@ def _render_answer(client: BackendClient, ans: dict[str, Any], progress_log: lis
         st.error(f"❌ **Service error:** {ans.get('error') or 'The engine could not complete the request.'}")
 
     if citations:
-        st.subheader(f"Sources ({len(citations)})")
-        for c in citations:
-            sid = c["source_id"]
-            title = c.get("title", c.get("doc_id", ""))
-            ce = c.get("ce_score")
-            score_str = f" · CE score `{ce:.2f}`" if isinstance(ce, (int, float)) else ""
-            with st.expander(f"[{sid}] {title}{score_str}", expanded=True):
-                st.write(c.get("text", ""))
-                doc_id = c.get("doc_id")
+        passages = group_citations(citations)
+        merged = f" from {len(citations)} chunks" if len(passages) < len(citations) else ""
+        st.subheader(f"Sources ({len(passages)} passage{'s' if len(passages) != 1 else ''}{merged})")
+        for passage in passages:
+            sid, title, doc_id = passage.source_ids[0], passage.title, passage.doc_id
+            with st.expander(label(passage), expanded=True):
+                st.markdown(as_plain_markdown(excerpt(passage.text, passage.start_char)))
                 if doc_id and st.button(
                     f"Open parent document ({title})", key=f"open_parent_{sid}_{doc_id}"
                 ):
@@ -181,11 +180,12 @@ def _render_parent_document(client: BackendClient, doc_id: str) -> None:
         doc = detail.get("document", {})
         chunks = detail.get("chunks", [])
         c1.subheader(f"📖 Parent document: {doc.get('title', doc_id)}")
-        st.caption(f"`doc_id={doc_id}` · {len(chunks)} chunks in reading order")
+        st.caption(f"`doc_id={doc_id}` · {len(chunks)} chunks in reading order · neighbouring chunks overlap "
+                   "by 32 tokens, so each one repeats the end of the previous")  # fmt: skip
         for ch in chunks:
             idx = ch.get("chunk_index", 0)
             st.markdown(f"**Chunk #{idx}** ({ch.get('n_tokens', '—')} tokens)")
-            st.write(ch.get("text", ""))
+            st.markdown(as_plain_markdown(ch.get("text", "")))
 
 
 def _render_trace(ans: dict[str, Any], progress_log: list[str]) -> None:

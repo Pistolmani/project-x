@@ -3,6 +3,7 @@
 import streamlit as st
 
 from ui.client import BackendClient, BackendError, get_client
+from ui.passages import as_plain_markdown
 
 
 def render_documents_page() -> None:
@@ -197,4 +198,4 @@ def _render_document_viewer(client: BackendClient, doc_id: str) -> None:
         tokens = ch.get("n_tokens", "—")
         span = f"chars {ch.get('start_char', 0)}–{ch.get('end_char', 0)}"
         with st.expander(f"Chunk #{idx} ({tokens} tokens, {span})", expanded=(idx == 0)):
-            st.write(ch.get("text", ""))
+            st.markdown(as_plain_markdown(ch.get("text", "")))

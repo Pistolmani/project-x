@@ -355,3 +355,31 @@ def test_streamlit_secrets_reach_the_backend_settings(monkeypatch):
             raise FileNotFoundError("no secrets.toml")
 
     export_secrets(Missing())  # local runs without secrets: no error
+
+
+class OverlappingSourcesClient(FakeClient):
+    """Two neighbouring, overlapping chunks of one article, cited as [S1, S2] (as the live Jaws answer)."""
+
+    ARTICLE = "Jacob the Liar (East Germany)\n\nJaws (June 20), directed by Steven Spielberg\nKeetje Tippel"
+
+    def ask_stream(self, question, params=None):
+        a = self.ARTICLE
+        cite = lambda sid, s, e, i: {"source_id": sid, "chunk_id": f"c{i}", "doc_id": "wiki-75", "title": "1975 in film",
+                                     "text": a[s:e], "ce_score": 6.0 - i / 10, "chunk_index": i, "start_char": s, "end_char": e}  # noqa: E731
+        yield {"type": "answer", "answer": {
+            "question": question, "status": "answered", "answer": "Jaws was directed by Steven Spielberg [S1, S2].",
+            "citations": [cite("S1", 31, len(a), 9), cite("S2", 0, 60, 8)], "searched": ["Jaws director"],
+            "retrieved": [], "gates": {}, "trace": [], "usage": {}, "error": None, "ms": 1.0}}
+
+
+def test_ask_page_merges_overlapping_chunks_into_one_literal_passage():
+    at = _ask_app(OverlappingSourcesClient())
+    at.text_area(key="ask_question_input").set_value("Who directed Jaws?").run()
+    at.button(key="btn_ask").click().run()
+    assert not at.exception
+    assert any(s.value == "Sources (1 passage from 2 chunks)" for s in at.subheader)
+    assert [e.label for e in at.expander if e.label.startswith("[S1")] == [
+        "[S1, S2] 1975 in film · chunks #8–9 · best CE score 5.20"]
+    passage = next(m.value for m in at.markdown if "Jacob the Liar" in m.value)
+    assert passage.count(r"Jaws \(June 20\)") == 1 and "  \n" in passage
+    assert any("[S1, S2] 1975 in film" in c.value for c in at.caption)
