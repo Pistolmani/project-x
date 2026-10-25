@@ -20,3 +20,6 @@ _Applied AI*.pdf
 .idea/
 Thumbs.db
 .DS_Store
+
+# Streamlit secrets (template: .streamlit/secrets.toml.example)
+.streamlit/secrets.toml

@@ -1,0 +1,6 @@
+[server]
+headless = true
+maxUploadSize = 10  # MB; the API enforces the same cap (MAX_UPLOAD_MB)
+
+[browser]
+gatherUsageStats = false

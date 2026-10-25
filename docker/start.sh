@@ -16,7 +16,7 @@ for _ in range(180):  # model loading takes ~30 s on the Space's CPU
 PY
 
 streamlit run ui/streamlit_app.py --server.port 8501 --server.address 0.0.0.0 --server.headless true \
-  --server.enableXsrfProtection false --server.maxUploadSize 10 --browser.gatherUsageStats false &
+  --server.enableXsrfProtection false &
 
 wait -n
 exit 1
