@@ -1,0 +1,15 @@
+# Everything for local work: the runtime plus GPU ingestion, the evaluation scripts and the tests.
+#
+# torch: on a GPU dev machine install the CUDA build first, e.g.
+#   pip install torch==2.11.0 --index-url https://download.pytorch.org/whl/cu128
+-r requirements.txt
+
+torch==2.11.0
+sentence-transformers==5.7.0  # MODEL_BACKEND=torch (the local default): GPU bulk embedding
+datasets==5.1.0
+huggingface_hub==1.33.0
+pyarrow==26.0.0
+tqdm==4.70.1
+
+pytest==9.1.1
+httpx2==2.16.0  # FastAPI TestClient

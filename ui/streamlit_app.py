@@ -6,7 +6,10 @@ Not named app.py on purpose: `streamlit run` puts ui/ first on sys.path, so a ui
 backend's `app` package.
 
 Talks to the FastAPI backend at `API_URL` (default `http://localhost:8000`). Holds no business logic.
+With EMBEDDED_API=true it first starts that backend in-process (ui/embedded_api.py; Streamlit Cloud).
 """
+
+import os
 
 import streamlit as st
 
@@ -16,6 +19,11 @@ from ui.pages.documents import render_documents_page
 from ui.pages.evaluation import render_evaluation_page
 
 st.set_page_config(page_title="AI Investigation Engine", page_icon="🔎", layout="wide")
+
+if os.environ.get("EMBEDDED_API", "").lower() == "true":
+    from ui.embedded_api import ensure_backend
+
+    ensure_backend()
 
 
 def _sidebar_status() -> None:

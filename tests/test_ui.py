@@ -317,3 +317,22 @@ def test_entry_script_loads_like_streamlit_run():
     result = subprocess.run([sys.executable, "-c", code], cwd=root, env=env, capture_output=True, text=True,
                             timeout=120)  # fmt: skip
     assert "ENTRY OK" in result.stdout, result.stderr[-2000:]
+
+
+def test_embedded_backend_serves_the_api_from_a_thread():
+    import socket
+
+    import httpx
+
+    from tests.test_api import make_client
+    from ui.embedded_api import start
+
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+    server = start(make_client().app, port=port, timeout_s=30)
+    try:
+        health = httpx.get(f"http://127.0.0.1:{port}/health", timeout=5).json()
+        assert health["status"] == "ok" and health["documents"] == 0
+    finally:
+        server.should_exit = True

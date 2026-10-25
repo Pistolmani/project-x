@@ -56,11 +56,12 @@ def main() -> None:
     questions = json.loads((settings.data_dir / "eval" / "questions.json").read_text(encoding="utf-8"))[args.set]
     searcher = Searcher(
         QdrantStore.from_settings(settings),
-        DenseEmbedder(settings.dense_model),
+        DenseEmbedder(settings.dense_model, backend=settings.model_backend),
         SparseEmbedder(settings.sparse_model),
-        CrossEncoderReranker(),
+        CrossEncoderReranker(backend=settings.model_backend),
     )
-    print(f"{len(questions)} {args.set} questions, chunking={args.strategy}, qdrant={settings.qdrant_url}\n")
+    print(f"{len(questions)} {args.set} questions, chunking={args.strategy}, models={settings.model_backend}, "
+          f"qdrant={settings.qdrant_url}\n")  # fmt: skip
     header = None
     for name in args.configs.split(","):
         # top_n=40: the cross-encoder must score more than 20, or the per-article cap would leave

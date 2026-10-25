@@ -14,7 +14,17 @@ class CrossEncoderReranker:
         device: str | None = None,
         batch_size: int = 32,
         max_length: int = 512,
+        backend: str = "torch",
     ):
+        """`backend="onnx"` runs the same model through FastEmbed without torch (CPU deployments); its
+        logits stay within ~0.13 of torch's (results/onnx_parity.json)."""
+        self.backend = backend
+        self.batch_size = batch_size
+        if backend == "onnx":
+            from fastembed.rerank.cross_encoder import TextCrossEncoder
+
+            self.model = TextCrossEncoder(model_name)  # returns raw logits, truncates at 512 tokens
+            return
         import torch
         from sentence_transformers import CrossEncoder
 
@@ -22,12 +32,13 @@ class CrossEncoderReranker:
         self.model = CrossEncoder(model_name, device=self.device, max_length=max_length)
         if self.device == "cuda":
             self.model.model.half()
-        self.batch_size = batch_size
         self._identity = torch.nn.Identity()
 
     def score(self, query: str, texts: list[str]) -> list[float]:
         if not texts:
             return []
+        if self.backend == "onnx":
+            return [float(s) for s in self.model.rerank(query, texts, batch_size=self.batch_size)]
         scores = self.model.predict(
             [(query, t) for t in texts],
             batch_size=self.batch_size,

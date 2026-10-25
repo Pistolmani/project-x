@@ -28,6 +28,9 @@ class Settings(BaseSettings):
 
     dense_model: str = "BAAI/bge-small-en-v1.5"
     sparse_model: str = "Qdrant/bm25"
+    # "torch" (sentence-transformers; GPU ingestion, the local default) or "onnx" (FastEmbed; CPU-only
+    # deployments such as Streamlit Cloud, where torch would not fit). Same vectors either way.
+    model_backend: str = "torch"
 
     chunk_size: int = 256  # tokens, counted with the dense model's own tokenizer (A2)
     chunk_overlap: int = 32  # fixed strategy only

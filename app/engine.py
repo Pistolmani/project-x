@@ -31,9 +31,10 @@ def build_engine(settings: Settings | None = None, cross_encoder: bool = True, c
     settings = settings or get_settings()
     store = QdrantStore.from_settings(settings)
     kv = Cache(settings.cache_path if cache else ":memory:")
-    dense = CachedEmbedder(DenseEmbedder(settings.dense_model), kv, "embed_dense")
+    backend = settings.model_backend
+    dense = CachedEmbedder(DenseEmbedder(settings.dense_model, backend=backend), kv, "embed_dense")
     sparse = CachedEmbedder(SparseEmbedder(settings.sparse_model), kv, "embed_sparse")
-    searcher = Searcher(store, dense, sparse, CrossEncoderReranker() if cross_encoder else None,
+    searcher = Searcher(store, dense, sparse, CrossEncoderReranker(backend=backend) if cross_encoder else None,
                         kv if cache else None)  # fmt: skip
     llm = CachedLLM(build_llm(settings), kv)
     verifier_llm = CachedLLM(build_llm(settings, [settings.gemini_model]), kv, "llm_verifier")  # one JSON call
