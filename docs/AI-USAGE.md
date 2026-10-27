@@ -23,7 +23,10 @@
   verifier, the relevance floor scoring the wrong query, Groq's 8k-token limit, deploy path/secrets
   issues); fitting the free host (ONNX backend and slim requirements, with parity measured first).
 - **Where AI was deliberately NOT used / where the human drove:**
-  - All architecture decisions (D1–D11, E1–E5, A1–A8, see `GRILL-ME.md`). The AI proposed options and
+  - **The human made all the important decisions:** every architecture, evaluation and build decision
+    (D1–D11, E1–E5, A1–A8, see `GRILL-ME.md`), and the key calls during the build: which design-review
+    findings to adopt, keeping the default fusion weights after tuning overfit, each phase plan, and
+    moving hosting to Streamlit Community Cloud when HF Spaces went paid. The AI proposed options and
     recommendations; the human chose each one.
   - **Core components written by the human** and handed to the AI to integrate into the codebase:
     | Component | Where |
