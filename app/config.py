@@ -47,9 +47,7 @@ class Settings(BaseSettings):
     results_dir: Path = PROJECT_ROOT / "results"
     cache_path: Path = PROJECT_ROOT / "data" / "cache.sqlite"
 
-    # Public demo (the live Streamlit app): visitors may only change documents they uploaded there, and /ask is capped
-    # so one visitor cannot spend the shared free-tier LLM quota. Off locally, so the eval scripts can plant
-    # and remove their documents.
+    # Public demo: visitors may only change their own uploads, and /ask is capped to protect the LLM quota.
     demo_mode: bool = False
     ask_limit_per_hour: int = 0  # across all visitors; 0 = unlimited
     max_upload_mb: float = 10

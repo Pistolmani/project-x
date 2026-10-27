@@ -19,7 +19,7 @@ BOILERPLATE_HEADINGS = {
     "see also", "references", "external links", "notes", "further reading", "bibliography",
     "sources", "citations", "footnotes", "notes and references", "references and notes",
     "explanatory notes", "general and cited sources", "works cited", "literature",
-}  # fmt: skip
+}
 
 _HEADING_MAX_CHARS = 80
 _HEADING_MAX_WORDS = 12

@@ -21,7 +21,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from qdrant_client.http.exceptions import ResponseHandlingException, UnexpectedResponse
 
 from app.api.schemas import (AskRequest, DocumentList, IngestResponse, SearchHit, SearchRequest,
-                             SearchResponse)  # fmt: skip
+                             SearchResponse)
 from app.ingestion.loaders import LoaderError
 from app.ingestion.service import DocumentNotFound
 from app.metrics import Metrics
@@ -78,7 +78,7 @@ def create_app(engine=None, ingestion=None) -> FastAPI:
             app.state.engine = built
             app.state.ingestion = IngestionService(built.store, built.dense, built.sparse,
                                                    load_tokenizer(built.settings.dense_model), built.settings,
-                                                   cache=built.cache)  # fmt: skip
+                                                   cache=built.cache)
         else:
             app.state.engine, app.state.ingestion = engine, ingestion
         app.state.ask_limit = HourlyLimit(_settings(app).ask_limit_per_hour)
@@ -114,7 +114,7 @@ def create_app(engine=None, ingestion=None) -> FastAPI:
     @app.exception_handler(DemoForbidden)
     def _forbidden(request: Request, e: DemoForbidden):
         return error(403, "demo_read_only", "the public demo only changes documents uploaded there; "
-                                            "the corpus and the evaluation documents are read-only")  # fmt: skip
+                                            "the corpus and the evaluation documents are read-only")
 
     @app.exception_handler(UploadTooLarge)
     def _too_large(request: Request, e: UploadTooLarge):
@@ -125,7 +125,7 @@ def create_app(engine=None, ingestion=None) -> FastAPI:
         return JSONResponse(status_code=429, headers={"Retry-After": str(e.args[0])},
                             content={"error": {"code": "ask_limit", "message": "the demo's hourly question limit "
                                                f"is used up (it protects the free LLM quota); try again in "
-                                               f"{e.args[0] // 60 + 1} min"}})  # fmt: skip
+                                               f"{e.args[0] // 60 + 1} min"}})
 
     @app.exception_handler(UnexpectedResponse)
     @app.exception_handler(ResponseHandlingException)
@@ -143,12 +143,10 @@ def create_app(engine=None, ingestion=None) -> FastAPI:
             documents, store_ok = None, False
         return {"status": "ok" if store_ok else "degraded", "vector_store": store_ok, "documents": documents,
                 "llm_providers": [p.name for p in getattr(engine.llm.llm, "providers", [])],
-                "cache": dict(engine.cache.stats)}  # fmt: skip
+                "cache": dict(engine.cache.stats)}
 
     @app.get("/metrics")
     def metrics(request: Request):
-        """Aggregate counters since the process started: requests and latency per route, answer outcomes,
-        LLM calls per provider, tokens, guardrail blocks, cache hit rates."""
         return request.app.state.metrics.snapshot(request.app.state.engine.cache.stats)
 
     @app.post("/search", response_model=SearchResponse)
@@ -156,9 +154,9 @@ def create_app(engine=None, ingestion=None) -> FastAPI:
         result = request.app.state.engine.searcher.search(body.query, body.params)
         hits = [SearchHit(chunk_id=c.point_id, doc_id=c.doc_id, title=c.title, text=c.text,
                           chunk_index=c.payload.get("chunk_index"), start_char=c.payload.get("start_char"),
-                          end_char=c.payload.get("end_char"), trace=c.trace()) for c in result.results]  # fmt: skip
+                          end_char=c.payload.get("end_char"), trace=c.trace()) for c in result.results]
         return SearchResponse(query=body.query, results=hits, stage_sizes=result.stage_sizes,
-                              timings_ms=result.timings_ms)  # fmt: skip
+                              timings_ms=result.timings_ms)
 
     @app.post("/ask")
     def ask(body: AskRequest, request: Request):
@@ -187,7 +185,7 @@ def create_app(engine=None, ingestion=None) -> FastAPI:
             except Exception as e:  # anything ask() does not turn into status "error" itself
                 log.exception("ask/stream failed")
                 events.put({"type": "error", "code": "internal_error",
-                            "message": f"the investigation failed: {type(e).__name__}"})  # fmt: skip
+                            "message": f"the investigation failed: {type(e).__name__}"})
             finally:
                 events.put(None)
 
@@ -229,7 +227,7 @@ def create_app(engine=None, ingestion=None) -> FastAPI:
             raise DocumentNotFound(doc_id)
         chunks = [{"chunk_id": str(r.id), **{k: r.payload.get(k) for k in
                    ("chunk_index", "text", "start_char", "end_char", "n_tokens", "version")}}
-                  for r in store.get_chunks(doc_id, strategy)]  # fmt: skip
+                  for r in store.get_chunks(doc_id, strategy)]
         return {"document": record, "chunks": chunks}
 
     @app.put("/documents/{doc_id}", response_model=IngestResponse)
@@ -271,7 +269,7 @@ def _read(request: Request, file: UploadFile) -> bytes:
 
 
 def _record_answer(app: FastAPI, answer: dict) -> None:
-    """Count the answer in /metrics and write one structured log line (no question text, only its size)."""
+    """Count the answer in /metrics and log one JSON line (without the question text)."""
     app.state.metrics.record_answer(answer)
     providers = sorted({f"{s.get('provider')}/{s.get('model')}" for s in answer.get("trace") or [] if s.get("step") == "llm"})
     guard = (answer.get("gates") or {}).get("guard") or {}
@@ -280,11 +278,10 @@ def _record_answer(app: FastAPI, answer: dict) -> None:
         "llm_calls": (answer.get("usage") or {}).get("llm_calls"), "providers": providers,
         "citations": len(answer.get("citations") or []),
         "guard_blocked": [f"{k}:{v.get('category')}" for k, v in guard.items() if not v.get("passed")],
-        "error": answer.get("error")}))  # fmt: skip
+        "error": answer.get("error")}))
 
 
 def _force_guard(request: Request, body) -> None:
-    """Public demo: visitors cannot switch the guardrails off through `params`."""
     if _settings(request.app).demo_mode:
         body.params.guard = True
 

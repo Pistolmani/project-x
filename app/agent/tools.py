@@ -23,14 +23,14 @@ SEARCH = ToolSpec(
     {"type": "object", "properties": {
         "query": {"type": "string", "description": "A focused search query, e.g. one sub-question."}},
      "required": ["query"]},
-)  # fmt: skip
+)
 GET_DOCUMENT = ToolSpec(
     "get_document",
     "Read more of the article a source comes from, in order, when a passage is cut off or more context is needed.",
     {"type": "object", "properties": {
         "source_id": {"type": "string", "description": "A source id you were shown, e.g. S3."}},
      "required": ["source_id"]},
-)  # fmt: skip
+)
 SUBMIT = ToolSpec(
     "submit_answer",
     "Finish. Call exactly once, after investigating.",
@@ -43,7 +43,7 @@ SUBMIT = ToolSpec(
         "citations": {"type": "array", "items": {"type": "string"},
                       "description": "Every source id the answer relies on."}},
      "required": ["status", "answer", "citations"]},
-)  # fmt: skip
+)
 
 
 @dataclass
@@ -56,14 +56,14 @@ class Source:
     ce_score: float | None  # cross-encoder score for the query that surfaced it (None if read via get_document)
     query: str | None
     payload: dict[str, Any] = field(repr=False, default_factory=dict)
-    suspicious: str | None = None  # an instruction-like phrase found in the text (guard.find_injection)
+    suspicious: str | None = None  # guard.find_injection
 
 
 class Toolbox:
     """Executes tool calls for one question and remembers every source shown to the model."""
 
     def __init__(self, searcher: Searcher, store: QdrantStore, params: SearchParams,
-                 document_chars: int = 6000):  # fmt: skip
+                 document_chars: int = 6000):
         self.searcher = searcher
         self.store = store
         self.params = params
@@ -92,7 +92,7 @@ class Toolbox:
         start = time.perf_counter()
         result = self.searcher.search(query, self.params)
         self.searches.append({"query": query, "top_ce_score": result.top_ce_score, "n": len(result.results),
-                              "ms": round((time.perf_counter() - start) * 1000, 1)})  # fmt: skip
+                              "ms": round((time.perf_counter() - start) * 1000, 1)})
         shown = [self._register(c.point_id, c.payload, c.ce_score, query) for c in result.results]
         results: dict[str, Any] = {"results": [self._show(s) for s in shown]}
         if not shown:
@@ -112,7 +112,7 @@ class Toolbox:
             used += len(text)
             existing = self._by_point.get(str(record.id))
             shown.append(self.sources[existing] if existing else
-                         self._register(str(record.id), record.payload, None, None))  # fmt: skip
+                         self._register(str(record.id), record.payload, None, None))
         return {"title": source.title, "passages": [self._show(s) for s in shown], "truncated": truncated}
 
     def best_ce_score(self, handles: list[str] | None = None) -> float | None:
@@ -132,7 +132,7 @@ class Toolbox:
         self._by_point[point_id] = handle
         text = payload.get("text", "")
         self.sources[handle] = Source(handle, point_id, payload.get("doc_id", ""), payload.get("title", ""),
-                                      text, ce_score, query, payload, find_injection(text))  # fmt: skip
+                                      text, ce_score, query, payload, find_injection(text))
         return self.sources[handle]
 
     @staticmethod

@@ -1,18 +1,7 @@
-"""Guardrails against hijacking and harmful output (BACKEND.md §5.5). Three layers around the agent:
+"""Guardrails (BACKEND.md §7): input guard, planted-instruction scan of passages, output guard.
 
-    question -> input guard -> [agent + gates] -> output guard -> user
-                               passages scanned for planted instructions
-
-- Input guard: a policy classifier (gpt-oss-safeguard on Groq) reads the question against INPUT_POLICY
-  (prompt injection, jailbreak, harmful requests). A blocked question never reaches the search or the LLM.
-- Passage scan: plain patterns flag passages that contain instructions aimed at an AI. Flagged passages are
-  still shown to the model (they may hold the answer), with a warning that they are data.
-- Output guard: everything the model wrote that the user will read is checked for a leaked system prompt
-  (verbatim overlap, plain code) and against OUTPUT_POLICY by the same classifier.
-
-The classifier's free tier is small (2,000 tokens/min), so when it is unreachable the input guard falls
-back to Prompt Guard 2 (a small injection detector) plus the patterns, and the output guard keeps only text
-that already passed the grounding gates. Every decision is recorded in AgentAnswer.gates["guard"].
+The policy classifier (gpt-oss-safeguard on Groq) is rate-limited; when it is unreachable the input guard
+falls back to Prompt Guard 2 and the patterns below.
 """
 
 import json
@@ -23,10 +12,8 @@ from dataclasses import asdict, dataclass, field
 from app.agent import prompts
 from app.cache import Cache, make_key
 
-# Instructions aimed at an AI, as they appear in injection attempts. Each needs wording addressed to a model,
-# so ordinary prose does not match ("a disregard for the rules", "You are now entering Free Derry", a prison
-# "jailbreak"). On the 50k-article corpus they flag 1 article (results/guardrails.json, corpus_scan); a flag
-# only adds a warning, the passage is still used.
+# Each pattern needs wording addressed to a model, so prose like "a disregard for the rules" does not match.
+# They flag 1 of the 50k corpus articles (results/guardrails.json, corpus_scan).
 _GAP = r"[^.\n]{0,40}?"
 _WHICH = r"(\s+(all|any|of|your|the|my|previous|prior|above|earlier|preceding|system's|these))+"
 INJECTION_PATTERNS = [re.compile(p, re.IGNORECASE) for p in [
@@ -40,7 +27,7 @@ INJECTION_PATTERNS = [re.compile(p, re.IGNORECASE) for p in [
     r"\b(note|message|notice) (to|for) the (ai|assistant|language model|llm|model)\b",
     rf"\b(answer|reply|respond)\b{_GAP}\b(every|all|each|any) questions?\b{_GAP}\bwith\b",
     rf"\bdo not\b{_GAP}\b(cite|mention|tell)\b{_GAP}\b(sources?|the user)\b",
-]]  # fmt: skip
+]]
 LEAK_NGRAM = 10  # this many consecutive words of a prompt in an answer = the prompt leaked
 PROMPT_GUARD_THRESHOLD = 0.9  # Prompt Guard 2 probability that the text is an attack
 
@@ -74,7 +61,7 @@ class GuardVerdict:
     allowed: bool
     category: str = "none"  # none | injection | harmful | prompt_leak | too_long
     reason: str = ""
-    checks: list[str] = field(default_factory=list)  # what ran, in order
+    checks: list[str] = field(default_factory=list)
     error: str | None = None  # the classifier was unreachable: the decision came from the fallbacks
 
     def as_gate(self) -> dict:
@@ -86,11 +73,10 @@ class GuardUnavailable(Exception):
 
 
 class GroqGuardModel:
-    """One Groq model used as a classifier. Results are cached: the eval repeats the same texts, and the
-    free tier of the policy model is tiny."""
+    """A Groq model used as a classifier, with cached results."""
 
     def __init__(self, api_key: str, model: str, cache: Cache | None = None, timeout_s: float = 15,
-                 max_wait_s: float = 20, client=None):  # fmt: skip
+                 max_wait_s: float = 20, client=None):
         import groq
 
         self.model = model
@@ -137,7 +123,7 @@ def _retry_after(e) -> float | None:
 
 class Guard:
     def __init__(self, classifier: GroqGuardModel | None = None, detector: GroqGuardModel | None = None,
-                 max_question_chars: int = 1000):  # fmt: skip
+                 max_question_chars: int = 1000):
         self.classifier = classifier  # policy model: injection + harmful, question and answer
         self.detector = detector  # Prompt Guard 2: injection only, the fallback for questions
         self.max_question_chars = max_question_chars
@@ -145,7 +131,7 @@ class Guard:
     def check_question(self, question: str) -> GuardVerdict:
         if len(question) > self.max_question_chars:
             return GuardVerdict(False, "too_long", f"questions are limited to {self.max_question_chars} characters",
-                                ["length"])  # fmt: skip
+                                ["length"])
         checks = ["length"]
         error = None  # set only when a configured classifier could not be reached
         if self.classifier is not None:

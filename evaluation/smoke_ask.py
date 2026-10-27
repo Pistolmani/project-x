@@ -3,7 +3,7 @@
     python -m evaluation.smoke_ask --per-type 2 --types simple,multihop,unanswerable
 
 A sanity check that the real LLM behaves like the scripted one in the tests, not the evaluation itself
-(that is Phase 4: judge-scored correctness, citation P/R, refusal and conflict accuracy).
+(that is `run_ask_eval` + `score_ask_eval`: judge-scored correctness, citation P/R, refusal and conflict accuracy).
 """
 
 import argparse
@@ -33,11 +33,11 @@ def main() -> None:
             print(f"  -> {out.status}: {out.answer}\n  cited: {cited}\n  searched: {out.searched}")
             print(f"  gates: { {k: v.get('passed', v.get('supported')) for k, v in out.gates.items()} }"
                   f"  llm calls: {out.usage['llm_calls']}  providers: "
-                  f"{sorted({s['provider'] for s in out.trace if s['step'] == 'llm'})}  {out.ms / 1000:.1f}s")  # fmt: skip
+                  f"{sorted({s['provider'] for s in out.trace if s['step'] == 'llm'})}  {out.ms / 1000:.1f}s")
             if out.error:
                 print(f"  error: {out.error}")
             records.append({"type": qtype, "question": q, "status": out.status, "answer": out.answer,
-                            "cited": cited, "searched": out.searched, "gates": out.gates, "usage": out.usage})  # fmt: skip
+                            "cited": cited, "searched": out.searched, "gates": out.gates, "usage": out.usage})
     if args.out:
         with open(args.out, "w", encoding="utf-8") as f:
             json.dump(records, f, indent=2, default=str)

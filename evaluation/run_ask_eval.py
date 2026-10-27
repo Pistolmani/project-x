@@ -73,7 +73,7 @@ def main() -> None:
             r = http.post("/ask", json={"question": q["question"], "params": params})
             body = r.json()
             record = {"id": q["id"], "type": qtype, "config": args.config, "params": params, "http_status": r.status_code,
-                      "answer": body, "at": datetime.now(timezone.utc).isoformat(timespec="seconds")}  # fmt: skip
+                      "answer": body, "at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
             out.write(json.dumps(record, ensure_ascii=False) + "\n")
             out.flush()
             status = body.get("status")

@@ -196,7 +196,7 @@ class QdrantStore:
         flt = models.Filter(must=[
             models.FieldCondition(key="doc_id", match=models.MatchValue(value=doc_id)),
             models.FieldCondition(key="chunking_strategy", match=models.MatchValue(value=strategy)),
-        ])  # fmt: skip
+        ])
         points, _ = self.client.scroll(self.chunks, scroll_filter=flt, limit=limit, with_payload=True)
         return sorted(points, key=lambda p: p.payload["chunk_index"])
 

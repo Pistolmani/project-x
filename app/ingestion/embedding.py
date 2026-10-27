@@ -20,7 +20,7 @@ class DenseEmbedder:
     queries embedded either way search the same index."""
 
     def __init__(self, model_name: str, device: str | None = None, batch_size: int | None = None,
-                 backend: str = "torch"):  # fmt: skip
+                 backend: str = "torch"):
         self.backend = backend
         # ONNX: an upload embedded 128 chunks at a time peaked at 3.7 GB; 16 at a time stays near startup
         self.batch_size = batch_size or (16 if backend == "onnx" else 128)

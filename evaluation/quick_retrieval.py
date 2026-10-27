@@ -1,4 +1,4 @@
-"""Quick retrieval comparison on real data (not the full Phase 4 evaluation).
+"""Quick retrieval comparison on real data (not the full `/ask` evaluation).
 
     python -m evaluation.quick_retrieval --set tuning
     python -m evaluation.quick_retrieval --set retrieval --strategy fixed
@@ -61,7 +61,7 @@ def main() -> None:
         CrossEncoderReranker(backend=settings.model_backend),
     )
     print(f"{len(questions)} {args.set} questions, chunking={args.strategy}, models={settings.model_backend}, "
-          f"qdrant={settings.qdrant_url}\n")  # fmt: skip
+          f"qdrant={settings.qdrant_url}\n")
     header = None
     for name in args.configs.split(","):
         # top_n=40: the cross-encoder must score more than 20, or the per-article cap would leave

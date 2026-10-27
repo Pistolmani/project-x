@@ -31,13 +31,13 @@ class CachedLLM:
 def _neutral(m: Message) -> dict:
     # The native copy is left out: it carries opaque signatures that differ between identical answers.
     return {"role": m.role, "text": m.text, "calls": [(c.name, c.args) for c in m.tool_calls],
-            "tool": m.tool_name, "result": m.result, "provider": m.provider}  # fmt: skip
+            "tool": m.tool_name, "result": m.result, "provider": m.provider}
 
 
 def _store(r: LLMResponse) -> dict:
     native = r.native.model_dump(mode="json", exclude_none=True) if r.native is not None else None
     return {"text": r.text, "tool_calls": [asdict(c) for c in r.tool_calls], "provider": r.provider,
-            "model": r.model, "usage": asdict(r.usage), "native": native}  # fmt: skip
+            "model": r.model, "usage": asdict(r.usage), "native": native}
 
 
 def _restore(d: dict) -> LLMResponse:
@@ -47,4 +47,4 @@ def _restore(d: dict) -> LLMResponse:
 
         native = types.Content.model_validate(d["native"])
     return LLMResponse(d["text"], [ToolCall(**c) for c in d["tool_calls"]], d["provider"], d["model"],
-                       Usage(**d["usage"]), native)  # fmt: skip
+                       Usage(**d["usage"]), native)

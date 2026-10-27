@@ -59,11 +59,11 @@ class LLM:
             raise LLMUnavailable([LLMError("gemini", "quota", retryable=True, status=429)])
         if response_schema:
             return LLMResponse(json.dumps({"supported": True, "unsupported_claims": [], "conflict": False,
-                                           "conflict_sides": [], "explanation": ""}), [], "scripted", "m")  # fmt: skip
+                                           "conflict_sides": [], "explanation": ""}), [], "scripted", "m")
         if not any(m.role == "tool" for m in messages):
             return LLMResponse("", [ToolCall("search_documents", {"query": messages[0].text})], "scripted", "m")
         return LLMResponse("", [ToolCall("submit_answer", {"status": "answered", "answer": "Spielberg [S1].",
-                                                           "citations": ["S1"]})], "scripted", "m")  # fmt: skip
+                                                           "citations": ["S1"]})], "scripted", "m")
 
 
 def make_client(fail_llm=False, **overrides):
@@ -74,7 +74,7 @@ def make_client(fail_llm=False, **overrides):
     searcher = Searcher(store, Dense(), Sparse(), cache=cache)
     llm = LLM(fail_llm)
     engine = SimpleNamespace(store=store, searcher=searcher, agent=Agent(llm, searcher, store), cache=cache,
-                             llm=SimpleNamespace(llm=SimpleNamespace(providers=[llm])), settings=settings)  # fmt: skip
+                             llm=SimpleNamespace(llm=SimpleNamespace(providers=[llm])), settings=settings)
     ingestion = IngestionService(store, Dense(), Sparse(), Tokenizer(), settings, cache=cache)
     return TestClient(create_app(engine, ingestion))
 
@@ -142,10 +142,10 @@ def test_request_validation(client):
 def test_ask_stream_emits_progress_then_final_answer(client):
     client.post("/documents", files={"file": ("jaws.md", JAWS)})
     with client.stream("POST", "/ask/stream",
-                       json={"question": "Who directed Jaws?", "params": {"relevance_floor": None}}) as r:  # fmt: skip
+                       json={"question": "Who directed Jaws?", "params": {"relevance_floor": None}}) as r:
         assert r.status_code == 200
         events = [json.loads(line.removeprefix("data: "))
-                  for line in r.iter_lines() if line.startswith("data: ")]  # fmt: skip
+                  for line in r.iter_lines() if line.startswith("data: ")]
     assert any(e["type"] == "progress" and e["stage"] == "searching" for e in events)
     assert events[-1]["type"] == "answer" and events[-1]["answer"]["status"] == "answered"
 
@@ -229,7 +229,7 @@ def test_demo_mode_keeps_the_guardrails_on():
 
 ARTICLE = (b"# Delta Radio\n\nDelta Radio is a radio station on the river delta. It opened in 2001 and broadcasts music, "
            b"news and weather for the towns along the river. The station moved to a new building in 2010 and "
-           b"added a second frequency for the coastal towns in 2015, when the delta bridge was finished.\n")  # fmt: skip
+           b"added a second frequency for the coastal towns in 2015, when the delta bridge was finished.\n")
 
 
 def test_an_edited_copy_is_indexed_but_named_as_a_near_duplicate(client):

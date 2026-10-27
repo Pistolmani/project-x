@@ -1,9 +1,4 @@
-"""In-process metrics behind `GET /metrics` (BACKEND.md §9): what the service did since it started.
-
-Counters and recent latencies only, kept in memory: the free host restarts the process when it sleeps,
-so the numbers describe the current run. Per-request detail (every search, LLM step and gate) is already
-in each answer's `trace` and `gates`; this is the aggregate view over all requests.
-"""
+"""In-memory metrics behind `GET /metrics` (BACKEND.md §9), since the process started."""
 
 import math
 import threading
@@ -27,14 +22,14 @@ class Metrics:
         self.window = window
         self._lock = threading.Lock()
         self.requests: Counter[str] = Counter()  # "POST /ask" -> count
-        self.errors: Counter[str] = Counter()  # route -> 5xx responses
+        self.errors: Counter[str] = Counter()  # 5xx per route
         self.latency_ms: dict[str, deque] = defaultdict(lambda: deque(maxlen=window))  # route -> recent
-        self.answers: Counter[str] = Counter()  # answer status
+        self.answers: Counter[str] = Counter()  # by status
         self.answer_ms: deque = deque(maxlen=window)
         self.llm_calls: Counter[str] = Counter()  # "provider/model" -> calls
-        self.tokens: Counter[str] = Counter()  # input / output
+        self.tokens: Counter[str] = Counter()
         self.guard_blocks: Counter[str] = Counter()  # "input:injection", "output:harmful", ...
-        self.guard_fallbacks = 0  # the policy classifier was unreachable
+        self.guard_fallbacks = 0
 
     def record_request(self, route: str, status: int, ms: float) -> None:
         with self._lock:
@@ -44,7 +39,6 @@ class Metrics:
                 self.errors[route] += 1
 
     def record_answer(self, answer: dict[str, Any]) -> None:
-        """One finished /ask or /ask/stream answer (as the JSON the API returns)."""
         with self._lock:
             self.answers[answer.get("status", "unknown")] += 1
             self.answer_ms.append(answer.get("ms", 0.0))
@@ -65,13 +59,13 @@ class Metrics:
             routes = {route: {"count": n, "errors_5xx": self.errors[route],
                               "p50_ms": percentile(self.latency_ms[route], 50),
                               "p95_ms": percentile(self.latency_ms[route], 95)}
-                      for route, n in sorted(self.requests.items())}  # fmt: skip
+                      for route, n in sorted(self.requests.items())}
             answers = {"total": sum(self.answers.values()), "by_status": dict(self.answers),
                        "p50_ms": percentile(self.answer_ms, 50), "p95_ms": percentile(self.answer_ms, 95),
-                       "llm_calls": dict(self.llm_calls), "tokens": dict(self.tokens)}  # fmt: skip
+                       "llm_calls": dict(self.llm_calls), "tokens": dict(self.tokens)}
             guard = {"blocked": dict(self.guard_blocks), "classifier_fallbacks": self.guard_fallbacks}
         return {"uptime_s": round(self.clock() - self.started), "latency_window": self.window,
-                "requests": routes, "answers": answers, "guard": guard, "cache": _cache_rates(cache_stats or {})}  # fmt: skip
+                "requests": routes, "answers": answers, "guard": guard, "cache": _cache_rates(cache_stats or {})}
 
 
 def _cache_rates(stats) -> dict[str, dict[str, Any]]:

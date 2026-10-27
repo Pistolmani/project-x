@@ -3,7 +3,7 @@
 It reads query and chunk *together*, so it is far more accurate than comparing two separate embeddings,
 but it costs one transformer pass per pair; that is why it only sees the top-N survivors.
 Scores are the raw logits (no sigmoid): the relevance floor that decides "insufficient evidence" is a
-threshold on this value, calibrated on real scores in Phase 2b (BACKEND.md §4, relevance floor).
+threshold on this value, calibrated on real scores (`evaluation/calibrate_floor.py`, BACKEND.md §4).
 """
 
 

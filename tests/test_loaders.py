@@ -35,7 +35,7 @@ def test_markdown_headings_become_sections_and_syntax_is_stripped():
     doc = load(md, "jaws.md")
     assert doc.title == "Jaws" and doc.format == "markdown"
     assert [(s.heading, s.paragraphs) for s in doc.sections] == [
-        ("Jaws", ["A 1975 film by Spielberg."]), ("Plot", ["A shark."])]  # fmt: skip
+        ("Jaws", ["A 1975 film by Spielberg."]), ("Plot", ["A shark."])]
 
 
 def test_html_drops_scripts_and_navigation_and_keeps_heading_structure():
@@ -57,7 +57,7 @@ def test_plain_text_uses_the_short_line_heading_rule():
 
 def test_pdf_text_and_title_are_extracted():
     doc = load(make_pdf(["Jaws is a 1975 American thriller film directed by Steven", "Spielberg.", "",
-                         "It was a box office hit."]), "jaws.pdf")  # fmt: skip
+                         "It was a box office hit."]), "jaws.pdf")
     assert doc.title == "Test PDF" and doc.format == "pdf" and doc.metadata == {"pages": 1}
     text = " ".join(p for s in doc.sections for p in s.paragraphs)
     assert "directed by Steven Spielberg." in text and "box office hit" in text
@@ -67,7 +67,7 @@ def test_pdf_text_and_title_are_extracted():
     (b"x", "a.docx", "unsupported"),
     (b"", "empty.txt", "no text"),
     (b"not a pdf", "broken.pdf", "unreadable PDF"),
-])  # fmt: skip
+])
 def test_bad_files_raise_a_loader_error(data, name, message):
     with pytest.raises(LoaderError, match=message):
         load(data, name)

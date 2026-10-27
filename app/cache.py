@@ -29,7 +29,7 @@ class Cache:
         self._lock = threading.Lock()
         with self._lock, self._db:
             self._db.execute("CREATE TABLE IF NOT EXISTS kv (ns TEXT, key TEXT, value TEXT, created REAL,"
-                             " PRIMARY KEY (ns, key))")  # fmt: skip
+                             " PRIMARY KEY (ns, key))")
             self._db.execute("CREATE TABLE IF NOT EXISTS generation (ns TEXT PRIMARY KEY, n INTEGER)")
         self.stats: Counter[str] = Counter()  # "<ns>:hit" / "<ns>:miss"
 
@@ -42,7 +42,7 @@ class Cache:
     def set(self, ns: str, key: str, value: Any) -> None:
         with self._lock, self._db:
             self._db.execute("INSERT OR REPLACE INTO kv VALUES (?, ?, ?, ?)",
-                             (ns, key, json.dumps(value, default=str), time.time()))  # fmt: skip
+                             (ns, key, json.dumps(value, default=str), time.time()))
 
     def generation(self, ns: str) -> int:
         with self._lock:

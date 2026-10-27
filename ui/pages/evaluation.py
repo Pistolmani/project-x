@@ -131,14 +131,14 @@ def _retrieval_findings(df: pd.DataFrame, chunk_counts: dict[str, int | None], d
     stages = [("dense only", "dense-only"), ("hybrid (RRF)", "hybrid"), ("full pipeline", "full pipeline")]
     for strategy in sorted(df["strategy"].unique()):
         steps = [f"{label} `{v:.3f}`" for config, label in stages
-                 if (v := _metric(df, strategy, config, "R@10")) is not None]  # fmt: skip
+                 if (v := _metric(df, strategy, config, "R@10")) is not None]
         if len(steps) >= 2:
             parts.append(f"{strategy}: " + " → ".join(steps))
     text = "**Key findings (R@10):** " + "; ".join(parts) + "." if parts else ""
     fixed, recursive = chunk_counts.get("fixed"), chunk_counts.get("recursive")
     if fixed and recursive:
         text += (f" **{deployed}** is deployed; fixed needs {fixed:,} chunks vs. {recursive:,} recursive "
-                 f"({1 - fixed / recursive:.0%} fewer).")  # fmt: skip
+                 f"({1 - fixed / recursive:.0%} fewer).")
     return text
 
 
@@ -153,14 +153,14 @@ def _tuning_findings(df: pd.DataFrame) -> str:
     if not parts:
         return ""
     return ("**Held-out R@20:** " + "; ".join(parts) + ". The weights in use are the defaults: tuning on 100 "
-            "questions did not beat them on the 300 held-out questions.")  # fmt: skip
+            "questions did not beat them on the 300 held-out questions.")
 
 
 def _render_behavioral_eval(beh: dict[str, Any] | None) -> None:
     st.subheader("3. End-to-End `/ask` Behavioral Evaluation & Failure Modes")
     if not beh:
         st.info(
-            "Phase 4 `/ask` evaluation results (`results/behavioral_eval.json`) will appear here once the "
+            "`/ask` evaluation results (`results/behavioral_eval.json`) will appear here once the "
             "offline 50-question evaluation completes: Answer Correctness, Citation Precision/Recall/F1, "
             "Refusal Accuracy (unanswerable), Conflict-Detection Accuracy (contradictory), and the Failure-Mode Table."
         )
@@ -185,7 +185,7 @@ def _render_behavioral_eval(beh: dict[str, Any] | None) -> None:
     if isinstance(buckets, dict) and buckets:
         st.markdown("**Failure buckets**")
         st.dataframe(pd.DataFrame([{"config: bucket": k, "count": v} for k, v in buckets.items()]),
-                     width="stretch", hide_index=True)  # fmt: skip
+                     width="stretch", hide_index=True)
 
     failures = beh.get("failures")
     if isinstance(failures, list) and failures:
@@ -210,7 +210,7 @@ def _render_live_metrics(client) -> None:
     cols[3].metric("Guardrail blocks", sum((guard.get("blocked") or {}).values()))
     if answers.get("by_status"):
         st.caption("Outcomes: " + " · ".join(f"{k} {v}" for k, v in sorted(answers["by_status"].items()))
-                   + " · LLM calls: " + (" · ".join(f"`{k}` {v}" for k, v in (answers.get("llm_calls") or {}).items()) or "none"))  # fmt: skip
+                   + " · LLM calls: " + (" · ".join(f"`{k}` {v}" for k, v in (answers.get("llm_calls") or {}).items()) or "none"))
     routes = [{"route": r, **v} for r, v in (m.get("requests") or {}).items()]
     if routes:
         st.dataframe(pd.DataFrame(routes), hide_index=True, width="stretch")
@@ -235,12 +235,12 @@ def _render_guardrails(g: dict[str, Any]) -> None:
         rows.append({"category": cat, "attacks": n.get("attacks", o.get("attacks", 0)),
                      "succeeded (off)": o.get("succeeded", 0), "succeeded (on)": n.get("succeeded", 0),
                      "stopped by input guard (on)": n.get("input guard", 0),
-                     "stopped by output guard (on)": n.get("output guard", 0)})  # fmt: skip
+                     "stopped by output guard (on)": n.get("output guard", 0)})
     if rows:
         st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
     st.caption(f"Policy classifier `{(g.get('guard_models') or {}).get('policy_classifier')}`; false positives also "
                f"checked on {fp.get('answers_checked', 0)} stored answers "
-               f"({len(fp.get('answers_blocked') or [])} blocked). Details: EVALUATION-REPORT.md §8.")  # fmt: skip
+               f"({len(fp.get('answers_blocked') or [])} blocked). Details: EVALUATION-REPORT.md §8.")
 
 
 def _render_benchmark(b: dict[str, Any]) -> None:
@@ -251,7 +251,7 @@ def _render_benchmark(b: dict[str, Any]) -> None:
     for run in b.get("search") or []:
         for stage, v in (run.get("ms") or {}).items():
             rows.append({"setup": f"{run['backend']} ({run['device']})", "stage": stage, "p50 ms": v.get("p50"),
-                         "p95 ms": v.get("p95")})  # fmt: skip
+                         "p95 ms": v.get("p95")})
     if rows:
         st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
     emb = " · ".join(f"{e['backend']}: {e['chunks_per_s']} chunks/s" for e in b.get("embedding") or [])

@@ -26,7 +26,7 @@ def spare_questions(manifest: dict, eval_ids: set[str]) -> list[hotpot.Question]
     held_out = set(manifest["held_out_titles"])
     questions, _ = hotpot.load(("validation",))
     return [q for q in questions if q.type == "bridge" and q.gold_titles and q.gold_titles <= held_out
-            and q.id not in eval_ids]  # fmt: skip
+            and q.id not in eval_ids]
 
 
 def best_threshold(positives: list[float], negatives: list[float]) -> tuple[float, float]:
@@ -82,7 +82,7 @@ def main() -> None:
     out.write_text(json.dumps({"floor": floor, "target_pass": TARGET_PASS, "pass_rate": pass_rate,
                                "block_rate": block_rate, "balanced_floor": balanced_floor,
                                "balanced_accuracy": balanced, "positives": positives, "negatives": negatives},
-                              indent=2), encoding="utf-8")  # fmt: skip
+                              indent=2), encoding="utf-8")
     print(f"-> {out}")
 
 

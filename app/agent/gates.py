@@ -48,7 +48,7 @@ class Verifier:
         """The cited sources, then the best-scoring other retrieved sources. A planted conflicting passage
         is often retrieved but not cited (the model picked one side), so the verifier must see it too."""
         others = sorted((s for h, s in toolbox.sources.items() if h not in cited and s.ce_score is not None),
-                        key=lambda s: -s.ce_score)  # fmt: skip
+                        key=lambda s: -s.ce_score)
         return (cited + [s.handle for s in others])[: max(self.max_passages, len(cited))]
 
     def check(self, question: str, answer: str, toolbox: Toolbox, cited: list[str]) -> tuple[Verdict | None, dict]:
@@ -56,7 +56,7 @@ class Verifier:
         passages = [(h, toolbox.sources[h].title, toolbox.sources[h].text) for h in handles]
         try:
             response = self.llm.chat(VERIFIER, [Message("user", verifier_input(question, answer, passages))],
-                                     response_schema=VERIFIER_SCHEMA)  # fmt: skip
+                                     response_schema=VERIFIER_SCHEMA)
         except LLMUnavailable as e:
             return None, {"error": str(e), "passages": handles}
         info = {"passages": handles, "provider": response.provider, "usage": vars(response.usage)}
@@ -64,7 +64,7 @@ class Verifier:
             data = json.loads(response.text)
             verdict = Verdict(bool(data["supported"]), bool(data["conflict"]), list(data.get("unsupported_claims", [])),
                               [s for s in data.get("conflict_sides", []) if s.get("source_id") in toolbox.sources],
-                              str(data.get("explanation", "")))  # fmt: skip
+                              str(data.get("explanation", "")))
         except (json.JSONDecodeError, KeyError, TypeError, AttributeError) as e:
             return None, info | {"error": f"unparseable verdict: {e}"}
         return verdict, info

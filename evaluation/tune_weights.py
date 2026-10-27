@@ -37,7 +37,7 @@ class Prepared:
 
 def prepare(searcher: Searcher, questions: list[dict], strategy: str) -> list[Prepared]:
     params = SearchParams(strategy=strategy, mode="hybrid", feature_rerank=False,
-                          cross_encoder=False, top_k=1000, max_per_doc=None)  # fmt: skip
+                          cross_encoder=False, top_k=1000, max_per_doc=None)
     prepared = []
     for q in questions:
         result = searcher.search(q["question"], params)
@@ -106,7 +106,7 @@ def main() -> None:
     settings = get_settings()
     sets = json.loads((settings.data_dir / "eval" / "questions.json").read_text(encoding="utf-8"))
     searcher = Searcher(QdrantStore.from_settings(settings), DenseEmbedder(settings.dense_model),
-                        SparseEmbedder(settings.sparse_model))  # fmt: skip
+                        SparseEmbedder(settings.sparse_model))
 
     print(f"Retrieving candidates for {len(sets['tuning'])} tuning + {len(sets['retrieval'])} held-out questions ...")
     tuning = prepare(searcher, sets["tuning"], args.strategy)
@@ -117,7 +117,7 @@ def main() -> None:
     tuned = coordinate_ascent(tuning, start)
 
     report = {"strategy": args.strategy, "objective": f"recall@{TOP_N} after per-article cap (tie: MRR)",
-              "tuned": tuned, "results": {}}  # fmt: skip
+              "tuned": tuned, "results": {}}
     print(f"\n{'config':<28}{'tuning R@20':>13}{'tuning MRR':>12}{'held-out R@20':>15}{'held-out MRR':>14}")
     for name, cfg in [("RRF only (no features)", no_features), ("default weights", start), ("tuned weights", tuned)]:
         t, h = evaluate(tuning, cfg), evaluate(heldout, cfg)

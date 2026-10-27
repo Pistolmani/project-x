@@ -56,9 +56,9 @@ def store():
             for i, text in enumerate(chunks):
                 payload = {"doc_id": doc_id, "title": title, "text": text, "n_tokens": 30,
                            "chunking_strategy": strategy, "chunk_index": i,
-                           "start_char": i * 100, "end_char": i * 100 + 50}  # fmt: skip
+                           "start_char": i * 100, "end_char": i * 100 + 50}
                 points.append(ChunkPoint(doc_id, strategy, i, dense.embed_query(text),
-                                         sparse.embed_query(text), payload))  # fmt: skip
+                                         sparse.embed_query(text), payload))
     s.upsert_chunks(points)
     return s
 
@@ -128,7 +128,7 @@ def test_identical_text_from_two_articles_is_kept_once():
         return Candidate(pid, {"doc_id": doc, "text": text})
 
     ranked = [cand("a", "wiki", "The station opened in 2001."), cand("b", "upload", "The  station opened in 2001.\n"),
-              cand("c", "upload", "The station opened in 2002.")]  # fmt: skip
+              cand("c", "upload", "The station opened in 2002.")]
     # whitespace-only differences are duplicates; a changed fact is not (conflict detection needs it)
     assert [c.point_id for c in drop_duplicate_text(ranked)] == ["a", "c"]
 

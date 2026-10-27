@@ -1,12 +1,12 @@
 from ui.passages import as_plain_markdown, excerpt, group_citations, label
 
 ARTICLE = ("Jacob the Liar (East Germany)\n\nJaws (June 20), directed by Steven Spielberg\n"
-           "Keetje Tippel, directed by Paul Verhoeven. The Killer Elite, directed by Sam Peckinpah.")  # fmt: skip
+           "Keetje Tippel, directed by Paul Verhoeven. The Killer Elite, directed by Sam Peckinpah.")
 
 
 def cite(sid, start, end, doc="d1", idx=None, ce=None):
     return {"source_id": sid, "doc_id": doc, "title": "1975 in film", "text": ARTICLE[start:end],
-            "chunk_index": idx, "start_char": start, "end_char": end, "ce_score": ce}  # fmt: skip
+            "chunk_index": idx, "start_char": start, "end_char": end, "ce_score": ce}
 
 
 def test_overlapping_chunks_merge_into_the_exact_article_text():
@@ -28,7 +28,7 @@ def test_contained_chunk_and_citations_without_offsets():
     [p] = group_citations([cite("S1", 0, 80), cite("S2", 10, 40)])
     assert p.text == ARTICLE[0:80] and p.source_ids == ["S1", "S2"]
     no_offsets = [{"source_id": "S1", "doc_id": "d1", "title": "T", "text": "a"},
-                  {"source_id": "S2", "doc_id": "d1", "title": "T", "text": "b"}]  # fmt: skip
+                  {"source_id": "S2", "doc_id": "d1", "title": "T", "text": "b"}]
     assert len(group_citations(no_offsets)) == 2
     assert label(group_citations(no_offsets)[0]) == "[S1] T"
 

@@ -35,7 +35,7 @@ def group_citations(citations: list[dict[str, Any]]) -> list[Passage]:
         start, end = c.get("start_char"), c.get("end_char")
         new = Passage(c.get("doc_id", ""), c.get("title") or c.get("doc_id", ""), c.get("text", ""),
                       [c["source_id"]], [c["chunk_index"]] if c.get("chunk_index") is not None else [],
-                      start, end, c.get("ce_score"), c.get("suspicious"))  # fmt: skip
+                      start, end, c.get("ce_score"), c.get("suspicious"))
         target = next((p for p in passages if _joinable(p, new)), None)
         if target is None:
             passages.append(new)

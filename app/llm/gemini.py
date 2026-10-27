@@ -35,7 +35,7 @@ class GeminiLLM:
         if tools:
             config.tools = [types.Tool(function_declarations=[
                 types.FunctionDeclaration(name=t.name, description=t.description,
-                                          parameters_json_schema=t.parameters) for t in tools])]  # fmt: skip
+                                          parameters_json_schema=t.parameters) for t in tools])]
         if response_schema:
             config.response_mime_type = "application/json"
             config.response_json_schema = response_schema
@@ -57,7 +57,7 @@ class GeminiLLM:
         parts = content.parts or []
         calls = [ToolCall(p.function_call.name, dict(p.function_call.args or {}),
                           **({"id": p.function_call.id} if p.function_call.id else {}))
-                 for p in parts if p.function_call]  # fmt: skip
+                 for p in parts if p.function_call]
         text = "".join(p.text for p in parts if p.text and not p.thought)
         meta = response.usage_metadata
         usage = Usage(meta.prompt_token_count or 0, meta.candidates_token_count or 0) if meta else Usage()
@@ -85,11 +85,11 @@ def to_contents(messages: list[Message]) -> list[types.Content]:
                 continue
             parts = [types.Part.from_text(text=m.text)] if m.text else []
             parts += [types.Part(function_call=types.FunctionCall(id=c.id, name=c.name, args=c.args))
-                      for c in m.tool_calls]  # fmt: skip
+                      for c in m.tool_calls]
             contents.append(types.Content(role="model", parts=parts))
         else:
             add_user_part(types.Part(function_response=types.FunctionResponse(
-                id=m.tool_call_id, name=m.tool_name, response=_as_object(m.result))))  # fmt: skip
+                id=m.tool_call_id, name=m.tool_name, response=_as_object(m.result))))
     return contents
 
 

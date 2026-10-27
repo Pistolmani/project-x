@@ -28,10 +28,10 @@ class GroqLLM:
         if tools:
             kwargs["tools"] = [{"type": "function", "function": {
                 "name": t.name, "description": t.description, "parameters": t.parameters}}
-                for t in tools]  # fmt: skip
+                for t in tools]
         if response_schema:
             kwargs["response_format"] = {"type": "json_schema", "json_schema": {
-                "name": "response", "schema": response_schema}}  # fmt: skip
+                "name": "response", "schema": response_schema}}
         try:
             # 413: the whole request exceeds the free tier's 8k tokens/minute. Long investigations that fell
             # back here mid-way get there, so retry with search results shortened: first the older ones,
@@ -105,7 +105,7 @@ def to_openai(system: str, messages: list[Message], keep_full: int | None = None
             entry = {"role": "assistant", "content": m.text or None}
             if m.tool_calls:
                 entry["tool_calls"] = [{"id": c.id, "type": "function", "function": {
-                    "name": c.name, "arguments": json.dumps(c.args)}} for c in m.tool_calls]  # fmt: skip
+                    "name": c.name, "arguments": json.dumps(c.args)}} for c in m.tool_calls]
             out.append(entry)
         else:
             result = _shortened(m.result) if i in shorten else m.result
@@ -121,5 +121,5 @@ def _shortened(result):
         if isinstance(short.get(key), list):
             short[key] = [p | {"text": p["text"][:COMPACT_PASSAGE_CHARS] + " ..."}
                           if isinstance(p, dict) and len(p.get("text", "")) > COMPACT_PASSAGE_CHARS else p
-                          for p in short[key]]  # fmt: skip
+                          for p in short[key]]
     return short

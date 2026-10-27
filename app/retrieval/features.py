@@ -37,7 +37,7 @@ NAME_CONNECTORS = frozenset("of for the and de da del della di du la le van von 
 _WORD = re.compile(r"[a-z0-9]+(?:'[a-z]+)?")
 _QUOTED = re.compile(r"[\"“]([^\"”]+)[\"”]")
 _YEAR = re.compile(r"\b(1[0-9]{3}|20[0-9]{2})\b")
-_NUMBER = re.compile(r"\b\d[\d,.]*\b|\b(?:one|two|three|four|five|six|seven|eight|nine|ten|hundred|thousand|million|billion)\b", re.I)  # fmt: skip
+_NUMBER = re.compile(r"\b\d[\d,.]*\b|\b(?:one|two|three|four|five|six|seven|eight|nine|ten|hundred|thousand|million|billion)\b", re.I)
 _NAME = re.compile(r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z.]+)+")
 SHORT_CHUNK_TOKENS = 20
 

@@ -65,7 +65,7 @@ def main() -> None:
             valid = [o for o in outcomes if o.correct is not None]
             row = {"config": config, "type": qtype, "n": len(items), "scored": len(valid),
                    "accuracy": mean([float(o.correct) for o in valid]),
-                   "errors": sum(o.bucket == "service error" for o in outcomes)}  # fmt: skip
+                   "errors": sum(o.bucket == "service error" for o in outcomes)}
             if qtype in ANSWERABLE:
                 answered = [o for o in outcomes if o.details.get("status") == "answered"]
                 row |= {"refused": sum(o.details.get("status") == "insufficient" for o in outcomes),
@@ -73,17 +73,17 @@ def main() -> None:
                         "token_f1": mean([o.details["token_f1"] for o in answered]),
                         "citation_precision": mean([o.details.get("citation_precision") for o in answered]),
                         "citation_recall": mean([o.details.get("citation_recall") for o in answered]),
-                        "citation_f1": mean([o.details.get("citation_f1") for o in answered])}  # fmt: skip
+                        "citation_f1": mean([o.details.get("citation_f1") for o in answered])}
             if qtype == "injection":
                 row["injection_resistance"] = mean([float(not o.details.get("injection_followed")) for o in outcomes
-                                                    if "injection_followed" in o.details])  # fmt: skip
+                                                    if "injection_followed" in o.details])
             if qtype == "contradictory":
                 row["conflict_flagged"] = mean([float(o.details.get("status") == "conflict") for o in outcomes])
                 row["planted_retrieved"] = mean([float(o.details.get("planted_retrieved", False)) for o in outcomes])
             answers = [a for _, a, _ in items]
             row |= {"llm_calls": mean([a.get("usage", {}).get("llm_calls") for a in answers]),
                     "input_tokens": mean([a.get("usage", {}).get("input_tokens") for a in answers]),
-                    "seconds": mean([(a.get("ms") or 0) / 1000 for a in answers])}  # fmt: skip
+                    "seconds": mean([(a.get("ms") or 0) / 1000 for a in answers])}
             by_type_rows.append(row)
             summary[qtype] = row
             for q, a, o in items:
@@ -92,10 +92,10 @@ def main() -> None:
                                      "gold": q["answer"], "status": a.get("status"),
                                      "answer": (a.get("answer") or a.get("error") or "")[:300],
                                      "cited": [c.get("title") for c in a.get("citations", [])],
-                                     "judge": (o.details.get("judge") or {}).get("reason")})  # fmt: skip
+                                     "judge": (o.details.get("judge") or {}).get("reason")})
 
         providers = Counter(s.get("provider") for rec in run.values() for s in rec["answer"].get("trace", [])
-                            if s.get("step") == "llm")  # fmt: skip
+                            if s.get("step") == "llm")
         configs[config] = {"by_type": summary, "llm_providers": dict(providers), "questions": len(run)}
 
     if not configs:
@@ -110,17 +110,17 @@ def main() -> None:
                 "refusal accuracy (unanswerable)": acc("unanswerable"),
                 "conflict detection (contradictory)": acc("contradictory"),
                 "injection resistance": primary.get("injection", {}).get("injection_resistance"),
-                "citation F1 (multi-hop)": primary.get("multihop", {}).get("citation_f1")}  # fmt: skip
+                "citation F1 (multi-hop)": primary.get("multihop", {}).get("citation_f1")}
     out = {"summary": {k: v for k, v in headline.items() if v is not None}, "configs": configs,
            "by_type": by_type_rows, "failures": failures,
-           "failure_buckets": dict(Counter((f["config"], f["bucket"]) for f in failures).most_common())}  # fmt: skip
+           "failure_buckets": dict(Counter((f["config"], f["bucket"]) for f in failures).most_common())}
     out["failure_buckets"] = {f"{c}: {b}": n for (c, b), n in out["failure_buckets"].items()}
     path = settings.results_dir / "behavioral_eval.json"
     path.write_text(json.dumps(out, indent=2, ensure_ascii=False), encoding="utf-8")
 
     for row in by_type_rows:
         print({k: v for k, v in row.items() if k in ("config", "type", "n", "accuracy", "citation_f1",
-                                                     "injection_resistance", "conflict_flagged", "llm_calls")})  # fmt: skip
+                                                     "injection_resistance", "conflict_flagged", "llm_calls")})
     print(f"failure buckets: {out['failure_buckets']}\n-> {path}")
 
 

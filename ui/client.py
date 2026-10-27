@@ -82,7 +82,7 @@ class BackendClient:
                             event = json.loads(line.removeprefix("data: "))
                             if event.get("type") == "error":
                                 raise BackendError(event.get("message", "the investigation failed"),
-                                                   event.get("code", "internal_error"))  # fmt: skip
+                                                   event.get("code", "internal_error"))
                             yield event
         except httpx.TimeoutException as e:
             raise BackendError("The backend timed out while investigating; try again.", "timeout") from e

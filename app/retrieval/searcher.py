@@ -38,8 +38,8 @@ class SearchParams(BaseModel):
     top_n: int = Field(20, gt=0)  # how many survivors the cross-encoder scores
     top_k: int = Field(8, gt=0)  # returned to the caller / the LLM
     max_per_doc: int | None = Field(2, gt=0)  # None = no cap
-    dedup_text: bool = True  # keep one of chunks with identical text (e.g. a passage copied into an upload)
-    doc_ids: list[str] | None = None  # optional scope filter
+    dedup_text: bool = True
+    doc_ids: list[str] | None = None
 
 
 @dataclass
@@ -52,7 +52,7 @@ class SearchResult:
 
     @property
     def top_ce_score(self) -> float | None:
-        """Best cross-encoder score: what the relevance floor (Phase 2b) will be applied to."""
+        """Best cross-encoder score: what the relevance floor is applied to."""
         scores = [c.ce_score for c in self.results if c.ce_score is not None]
         return max(scores) if scores else None
 
@@ -78,7 +78,7 @@ class Searcher:
         result = self._search(query, params)
         if key is not None:
             self.cache.set("search", key, {"results": [asdict(c) for c in result.results],
-                                           "stage_sizes": result.stage_sizes})  # fmt: skip
+                                           "stage_sizes": result.stage_sizes})
         return result
 
     def _search(self, query: str, params: SearchParams) -> SearchResult:
@@ -93,7 +93,7 @@ class Searcher:
         with _timed(timings, "fusion"):
             candidates = self._fuse(lists, params)
         sizes = {"dense": len(lists.get(DENSE, [])), "sparse": len(lists.get(SPARSE, [])),
-                 "fused": len(candidates)}  # fmt: skip
+                 "fused": len(candidates)}
         if params.dedup_text:
             candidates = drop_duplicate_text(candidates)
             sizes["duplicates_dropped"] = sizes["fused"] - len(candidates)
@@ -117,7 +117,7 @@ class Searcher:
     @staticmethod
     def _filter(params: SearchParams) -> models.Filter:
         must = [models.FieldCondition(key="chunking_strategy",
-                                      match=models.MatchValue(value=params.strategy.value))]  # fmt: skip
+                                      match=models.MatchValue(value=params.strategy.value))]
         if params.doc_ids:
             must.append(models.FieldCondition(key="doc_id", match=models.MatchAny(any=params.doc_ids)))
         return models.Filter(must=must)
@@ -146,10 +146,7 @@ class Searcher:
 
 
 def drop_duplicate_text(candidates: list[Candidate]) -> list[Candidate]:
-    """Keep the best-ranked of chunks whose text is identical (same content hash, so whitespace-only
-    differences count as identical), e.g. a passage an upload copied from a corpus article. Identical
-    text cannot disagree, so conflict detection loses nothing, and the freed slots go to other evidence.
-    Near-duplicates are kept: a planted conflicting version differs in exactly the fact that matters."""
+    """Keep the best-ranked of chunks with identical text. Near-duplicates stay: they may conflict."""
     seen: set[str] = set()
     kept = []
     for c in candidates:

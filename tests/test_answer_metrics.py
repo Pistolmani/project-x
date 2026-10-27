@@ -2,7 +2,7 @@ import json
 
 from app.llm.base import LLMError, LLMResponse, LLMUnavailable
 from evaluation.answer_metrics import (Judge, citation_prf, contains_gold, exact_match, normalize_answer,
-                                       score_record, token_f1)  # fmt: skip
+                                       score_record, token_f1)
 
 
 def test_hotpot_normalization_and_span_metrics():
@@ -46,7 +46,7 @@ CORRECT = {"verdict": "correct", "reason": ""}
 
 def answer(status, cited=(), retrieved=(), text="x"):
     return {"status": status, "answer": text, "citations": [{"doc_id": d} for d in cited],
-            "retrieved": [{"doc_id": d} for d in retrieved]}  # fmt: skip
+            "retrieved": [{"doc_id": d} for d in retrieved]}
 
 
 def test_answerable_buckets():
@@ -76,15 +76,15 @@ def test_conflict_requires_both_the_original_and_the_planted_document():
     assert score_record("contradictory", q, answer("conflict", "ap", "ap"), None, ids).correct
     assert score_record("contradictory", q, answer("conflict", "a", "ap"), None, ids).bucket == "conflict flagged, wrong sources"
     assert score_record("contradictory", q, answer("answered", "a", "a"), None, ids).bucket == (
-        "missed conflict (planted doc not retrieved)")  # fmt: skip
+        "missed conflict (planted doc not retrieved)")
     assert score_record("contradictory", q, answer("answered", "a", "ap"), None, ids).bucket == (
-        "missed conflict (retrieved, not surfaced)")  # fmt: skip
+        "missed conflict (retrieved, not surfaced)")
 
 
 def test_unanswerable_answers_are_split_into_dataset_artifacts_and_hallucinations():
     q = {"answer": "Captain John Underhill", "gold": []}
     in_corpus = {"status": "answered", "answer": "John Underhill [S4]", "retrieved": [],
-                 "citations": [{"doc_id": "x", "text": "soldiers under the command of John Underhill"}]}  # fmt: skip
+                 "citations": [{"doc_id": "x", "text": "soldiers under the command of John Underhill"}]}
     assert score_record("unanswerable", q, in_corpus, None, {}).bucket == "dataset: gold answer present in a cited article"
     other = {"status": "answered", "answer": "Joan Smalls [S7]", "retrieved": [],
              "citations": [{"doc_id": "y", "text": "Joan Smalls (born 1988)"}], "gates": {"verifier": {"supported": True}}}

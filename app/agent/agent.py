@@ -32,7 +32,7 @@ class AgentParams(BaseModel):
     search: SearchParams = Field(default_factory=SearchParams)
     agentic: bool = True  # False = single-shot (one search with the raw question, then submit_answer)
     max_iterations: int = Field(5, gt=0)  # investigator LLM calls before the answer is forced
-    max_tool_calls: int = Field(8, gt=0)  # search/get_document budget
+    max_tool_calls: int = Field(8, gt=0)
     # Cross-encoder logit. evaluation.calibrate_floor: 3.92 passes 95% of answerable tuning questions and
     # blocks 71% of held-out (unanswerable) ones; None disables the gate.
     relevance_floor: float | None = 3.92
@@ -62,10 +62,10 @@ class AgentAnswer:
     status: Status
     answer: str
     citations: list[Citation] = field(default_factory=list)
-    searched: list[str] = field(default_factory=list)  # every query the agent ran
+    searched: list[str] = field(default_factory=list)
     # Every source shown to the model (cited or not): what the eval's "retrieval miss" bucket checks.
     retrieved: list[dict[str, Any]] = field(default_factory=list)
-    gates: dict[str, Any] = field(default_factory=dict)  # what each check decided, and why
+    gates: dict[str, Any] = field(default_factory=dict)
     trace: list[dict[str, Any]] = field(default_factory=list)
     usage: dict[str, int] = field(default_factory=lambda: {"llm_calls": 0, "input_tokens": 0, "output_tokens": 0})
     error: str | None = None
@@ -74,7 +74,7 @@ class AgentAnswer:
 
 class Agent:
     def __init__(self, llm: LLM, searcher: Searcher, store: QdrantStore, verifier_llm: LLM | None = None,
-                 guard: Guard | None = None):  # fmt: skip
+                 guard: Guard | None = None):
         self.llm = llm
         self.verifier_llm = verifier_llm or llm  # a different model spreads the free-tier quota
         self.searcher = searcher
@@ -109,19 +109,19 @@ class Agent:
             out.status, out.answer, out.error = "error", "", f"vector store unavailable: {e}"
         out.searched = [s["query"] for s in toolbox.searches]
         out.retrieved = [{"source_id": s.handle, "doc_id": s.doc_id, "title": s.title, "ce_score": s.ce_score}
-                         for s in toolbox.sources.values()]  # fmt: skip
+                         for s in toolbox.sources.values()]
         out.ms = round((time.perf_counter() - start) * 1000, 1)
         return out
 
     # --- the loop -------------------------------------------------------------------------------
 
     def _investigate(self, question: str, params: AgentParams, toolbox: Toolbox, out: AgentAnswer,
-                     emit: Callable[[dict[str, Any]], None] = lambda _: None) -> dict:  # fmt: skip
+                     emit: Callable[[dict[str, Any]], None] = lambda _: None) -> dict:
         messages = [Message("user", question)]
         tool_calls = 0
         for iteration in range(1, params.max_iterations + 1):
             emit({"type": "progress", "stage": "thinking", "iteration": iteration,
-                  "message": "planning…" if iteration == 1 else f"thinking (step {iteration})…"})  # fmt: skip
+                  "message": "planning…" if iteration == 1 else f"thinking (step {iteration})…"})
             response = self._chat(prompts.INVESTIGATOR, messages, toolbox.specs(), out)
             messages.append(response.as_message())
             if not response.tool_calls:
@@ -136,7 +136,7 @@ class Agent:
                 for call in response.tool_calls:
                     error = parsed if call is submit else "not run: submit_answer must be called on its own"
                     messages.append(Message("tool", tool_call_id=call.id, tool_name=call.name,
-                                            result={"error": error}))  # fmt: skip
+                                            result={"error": error}))
                 continue
             for call in response.tool_calls:
                 if tool_calls >= params.max_tool_calls:
@@ -158,7 +158,7 @@ class Agent:
         return {"status": "insufficient", "answer": "", "citations": []}
 
     def _single_shot(self, question: str, toolbox: Toolbox, out: AgentAnswer,
-                     emit: Callable[[dict[str, Any]], None] = lambda _: None) -> dict:  # fmt: skip
+                     emit: Callable[[dict[str, Any]], None] = lambda _: None) -> dict:
         """Non-agentic RAG: one search with the raw question, then one LLM call forced to submit_answer."""
         from app.agent.tools import SEARCH
         from app.llm.base import ToolCall
@@ -166,7 +166,7 @@ class Agent:
         result = self._run_tool(ToolCall(SEARCH.name, {"query": question}), toolbox, out, emit)
         passages = "\n\n".join(
             f"[{p['source_id']}] ({p['title']})" + (f" WARNING: {p['warning']}" if p.get("warning") else "")
-            + f"\n{p['text']}" for p in result.get("results", []))  # fmt: skip
+            + f"\n{p['text']}" for p in result.get("results", []))
         prompt = f"Question: {question}\n\nPassages:\n{passages or '(no passages found)'}\n\n{prompts.SINGLE_SHOT}"
         emit({"type": "progress", "stage": "submitting", "message": "drafting answer…"})
         response = self._chat(prompts.INVESTIGATOR, [Message("user", prompt)], [SUBMIT], out)
@@ -178,7 +178,7 @@ class Agent:
         return {"status": "insufficient", "answer": "", "citations": []}
 
     def _run_tool(self, call, toolbox: Toolbox, out: AgentAnswer,
-                  emit: Callable[[dict[str, Any]], None]) -> dict:  # fmt: skip
+                  emit: Callable[[dict[str, Any]], None]) -> dict:
         if call.name == "search_documents":
             q = call.args.get("query", "") if isinstance(call.args, dict) else ""
             emit({"type": "progress", "stage": "searching", "query": q, "message": f"searching: {q}"})
@@ -190,10 +190,10 @@ class Agent:
         n_res = len(result.get("results", result.get("passages", [])))
         out.trace.append({"step": "tool", "tool": call.name, "args": call.args, "results": n_res,
                           "error": result.get("error"),
-                          "ms": round((time.perf_counter() - step_start) * 1000, 1)})  # fmt: skip
+                          "ms": round((time.perf_counter() - step_start) * 1000, 1)})
         if call.name == "search_documents" and not result.get("error"):
             emit({"type": "progress", "stage": "found", "count": n_res,
-                  "message": f"found {n_res} passage{'s' if n_res != 1 else ''}"})  # fmt: skip
+                  "message": f"found {n_res} passage{'s' if n_res != 1 else ''}"})
         return result
 
     def _question_ce_score(self, question: str, texts: list[str]) -> float | None:
@@ -210,7 +210,7 @@ class Agent:
         out.usage["output_tokens"] += response.usage.output_tokens
         out.trace.append({"step": "llm", "provider": response.provider, "model": response.model,
                           "tool_calls": [c.name for c in response.tool_calls],
-                          "ms": round((time.perf_counter() - step_start) * 1000, 1)})  # fmt: skip
+                          "ms": round((time.perf_counter() - step_start) * 1000, 1)})
         return response
 
     # --- the guardrails -------------------------------------------------------------------------
@@ -225,16 +225,14 @@ class Agent:
         return verdict.allowed
 
     def _guard_output(self, question: str, out: AgentAnswer, emit: Callable[[dict[str, Any]], None]) -> None:
-        """Check what the model wrote before the user reads it. Answers and conflicts are blocked whole;
-        a refusal only loses the model's explanation, since the fixed refusal sentence is safe."""
+        """Answers and conflicts are blocked whole; a refusal only loses the model's explanation."""
         written = out.answer.removeprefix(REFUSAL).strip() if out.status == "insufficient" else out.answer
         if not written:
             return
         emit({"type": "progress", "stage": "guard", "message": "checking the answer…"})
         verdict = self.guard.check_answer(question, written)
         gate = verdict.as_gate()
-        # An unreachable classifier passes text the gates already grounded (answers, conflicts), but not
-        # a refusal's explanation, which no gate has checked.
+        # Classifier unreachable: grounded answers pass, but a refusal's explanation was never checked.
         if verdict.error and out.status == "insufficient":
             verdict.allowed = gate["passed"] = False
             gate["reason"] = "explanation dropped: the output classifier was unavailable"
@@ -249,7 +247,7 @@ class Agent:
     # --- the gates ------------------------------------------------------------------------------
 
     def _finalize(self, question, submitted: dict, params: AgentParams, toolbox: Toolbox, out: AgentAnswer,
-                  emit: Callable[[dict[str, Any]], None] = lambda _: None) -> None:  # fmt: skip
+                  emit: Callable[[dict[str, Any]], None] = lambda _: None) -> None:
         status, answer = submitted["status"], submitted["answer"].strip()
         cited, invalid = check_citations(answer, submitted["citations"], set(toolbox.sources))
         out.gates["citations"] = {"valid": cited, "invalid": invalid, "passed": bool(cited) or status != "answered"}
@@ -269,7 +267,7 @@ class Agent:
             passed = passes_relevance_floor(best, params.relevance_floor)
             out.gates["retrieval"] = {"best_ce_score": best, "subquery_ce_score": best_subquery,
                                       "question_ce_score": best_question, "floor": params.relevance_floor,
-                                      "passed": passed}  # fmt: skip
+                                      "passed": passed}
             if not passed:
                 status, answer = "insufficient", REFUSAL
 
@@ -281,11 +279,11 @@ class Agent:
             out.usage["output_tokens"] += info.get("usage", {}).get("output_tokens", 0)
             out.gates["verifier"] = info | ({"supported": verdict.supported, "conflict": verdict.conflict,
                                              "unsupported_claims": verdict.unsupported_claims,
-                                             "explanation": verdict.explanation} if verdict else {})  # fmt: skip
+                                             "explanation": verdict.explanation} if verdict else {})
             if verdict and verdict.conflict and len({s["source_id"] for s in verdict.conflict_sides}) >= 2:
                 status = "conflict"
                 answer = "The sources disagree: " + "; ".join(
-                    f"{s['claim']} [{s['source_id']}]" for s in verdict.conflict_sides) + "."  # fmt: skip
+                    f"{s['claim']} [{s['source_id']}]" for s in verdict.conflict_sides) + "."
                 cited = list(dict.fromkeys(s["source_id"] for s in verdict.conflict_sides))
             elif verdict and not verdict.supported:
                 status, answer = "insufficient", REFUSAL

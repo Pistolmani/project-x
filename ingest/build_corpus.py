@@ -67,7 +67,7 @@ def build(args: argparse.Namespace, paths: "_Paths") -> None:
     docs, duplicates = _dedup([
         wiki.build_doc(stable_id(f"wiki:{t}"), t, articles[t][0], articles[t][1], paragraphs[t])
         for t in sel.corpus_titles
-    ])  # fmt: skip
+    ])
     # The fill was over-selected by a margin; trim back so dedup drops never leave us under target.
     keep = set(trim_to_target([d.title for d in docs], sel.required_titles, config.target_docs))
     docs = [d for d in docs if d.title in keep]
@@ -99,7 +99,7 @@ def build(args: argparse.Namespace, paths: "_Paths") -> None:
                 for d in docs
             ],
         },
-    )  # fmt: skip
+    )
     print(f"Build done in {time.time() - started:.0f}s: {len(docs):,} docs -> {paths.docs}")
 
 
@@ -143,9 +143,9 @@ def _eval_sets(sel: Selection, unanswerable, docs: list[wiki.CorpusDoc]) -> dict
                 "sentence_index": sent_id,
                 "doc_id": doc.doc_id if doc else None,  # None: held out on purpose
                 "span": doc.gold_sentence_spans[sent_id] if in_range else None,
-            })  # fmt: skip
+            })
         return {"id": q.id, "question": q.question, "answer": q.answer, "hotpot_type": q.type,
-                "level": q.level, "expected_behavior": expected, "gold": gold}  # fmt: skip
+                "level": q.level, "expected_behavior": expected, "gold": gold}
 
     return {
         "behavioral": {
@@ -209,7 +209,7 @@ def index(paths: "_Paths", settings, strategies: list[ChunkingStrategy], batch_d
             "chunks_in_collection": store.count(store.chunks, strategy.value),
             "mean_chunk_tokens": round(statistics.fmean(chunk_tokens), 1) if chunk_tokens else None,
             "seconds": round(time.time() - started),
-        }  # fmt: skip
+        }
 
     doc_tokens = [len(tokenizer(d["text"], add_special_tokens=False)["input_ids"]) for d in paths.iter_docs()]
     stats["doc_tokens"] = _summary(doc_tokens)
@@ -258,7 +258,7 @@ def _structured(d: dict) -> StructuredText:
         d["text"],
         [SectionSpans(tuple(s["heading"]) if s["heading"] else None,
                       [tuple(p) for p in s["paragraphs"]]) for s in d["sections"]],
-    )  # fmt: skip
+    )
 
 
 def _summary(values: list[int]) -> dict:
@@ -294,7 +294,7 @@ class _Paths:
                     "sections": [{"heading": s.heading, "paragraphs": s.paragraphs}
                                  for s in d.structured.sections],
                     "gold_sentence_spans": d.gold_sentence_spans,
-                }  # fmt: skip
+                }
                 f.write(json.dumps(row, ensure_ascii=False) + "\n")
 
     def iter_docs(self) -> Iterator[dict]:

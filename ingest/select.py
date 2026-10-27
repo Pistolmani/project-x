@@ -108,7 +108,7 @@ def select(questions: list[Question], available: set[str], config: SelectionConf
     kept = (
         sel.simple + sel.multihop + sel.contradictory + sel.retrieval + sel.tuning
         + sel.unanswerable_candidates
-    )  # fmt: skip
+    )
     required = sorted(({t for q in kept for t in q.context_titles} & available) - sel.held_out)
     if len(required) > config.target_docs:
         raise ValueError(f"{len(required)} required articles exceed target {config.target_docs}")

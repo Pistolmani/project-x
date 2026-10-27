@@ -160,7 +160,7 @@ def _render_answer(client: BackendClient, ans: dict[str, Any], progress_log: lis
             with st.expander(label(passage), expanded=True):
                 if passage.suspicious:
                     st.warning(f"⚠️ This passage contains instruction-like text (\"{as_plain_markdown(passage.suspicious)}\"); "
-                               "the model was told to treat it as data.")  # fmt: skip
+                               "the model was told to treat it as data.")
                 st.markdown(as_plain_markdown(excerpt(passage.text, passage.start_char)))
                 if doc_id and st.button(
                     f"Open parent document ({title})", key=f"open_parent_{sid}_{doc_id}"
@@ -191,7 +191,7 @@ def _render_parent_document(client: BackendClient, doc_id: str) -> None:
         chunks = detail.get("chunks", [])
         c1.subheader(f"📖 Parent document: {doc.get('title', doc_id)}")
         st.caption(f"`doc_id={doc_id}` · {len(chunks)} chunks in reading order · neighbouring chunks overlap "
-                   "by 32 tokens, so each one repeats the end of the previous")  # fmt: skip
+                   "by 32 tokens, so each one repeats the end of the previous")
         for ch in chunks:
             idx = ch.get("chunk_index", 0)
             st.markdown(f"**Chunk #{idx}** ({ch.get('n_tokens', '—')} tokens)")
@@ -242,7 +242,7 @@ def _render_trace(ans: dict[str, Any], progress_log: list[str]) -> None:
                     note = f" — {g['reason']}" if g.get("reason") else ""
                     fallback = f" · classifier unavailable: `{g['error']}`" if g.get("error") else ""
                     st.markdown(f"- **{side.capitalize()} guard** (`{', '.join(g.get('checks', []))}`): "
-                                f"{badge}{note}{fallback}")  # fmt: skip
+                                f"{badge}{note}{fallback}")
         if {k: v for k, v in gates.items() if k != "guard"}:
             st.markdown("**Anti-hallucination gates:**")
             cit = gates.get("citations")

@@ -27,7 +27,7 @@ WARMUP = 3
 
 def summarize(values: list[float]) -> dict[str, float | None]:
     return {"p50": percentile(values, 50), "p95": percentile(values, 95),
-            "mean": round(sum(values) / len(values), 1) if values else None}  # fmt: skip
+            "mean": round(sum(values) / len(values), 1) if values else None}
 
 
 def search_latency(backend: str, questions: list[str]) -> dict:
@@ -49,7 +49,7 @@ def search_latency(backend: str, questions: list[str]) -> dict:
             per_stage[stage].append(ms)
     device = getattr(dense, "device", "cpu")
     return {"backend": backend, "device": device, "questions": len(questions),
-            "ms": {stage: summarize(v) for stage, v in per_stage.items() if v}}  # fmt: skip
+            "ms": {stage: summarize(v) for stage, v in per_stage.items() if v}}
 
 
 def embedding_throughput(backend: str, texts: list[str]) -> dict:
@@ -63,7 +63,7 @@ def embedding_throughput(backend: str, texts: list[str]) -> dict:
     sparse.embed_documents(texts)
     seconds = time.perf_counter() - start
     return {"backend": backend, "chunks": len(texts), "seconds": round(seconds, 1),
-            "chunks_per_s": round(len(texts) / seconds, 1)}  # fmt: skip
+            "chunks_per_s": round(len(texts) / seconds, 1)}
 
 
 def corpus_chunks(n: int, seed: int = 7) -> list[str]:
@@ -93,7 +93,7 @@ def main() -> None:
     result = {"what": "search latency per stage and embedding throughput (evaluation/benchmark.py)",
               "date": datetime.now(timezone.utc).date().isoformat(),
               "index": {"documents": store.count(store.documents), "chunks": store.count(store.chunks)},
-              "search": [], "embedding": []}  # fmt: skip
+              "search": [], "embedding": []}
     for backend in args.backends.split(","):
         print(f"[{backend}] search latency over {len(questions)} questions…")
         result["search"].append(search_latency(backend, questions))

@@ -19,7 +19,7 @@ class FallbackLLM:
     name = "fallback"
 
     def __init__(self, providers: list[LLM], retries: int = 2, backoff_s: float = 1.0, max_wait_s: float = 60,
-                 sleep: Callable[[float], None] = time.sleep):  # fmt: skip
+                 sleep: Callable[[float], None] = time.sleep):
         self.providers = providers
         self.retries = retries
         self.backoff_s = backoff_s
@@ -62,5 +62,5 @@ def build_llm(settings, gemini_models: list[str] | None = None) -> FallbackLLM:
             providers.append(GeminiLLM(key, model, settings.llm_timeout_s))
     if settings.groq_api_key:
         providers.append(GroqLLM(settings.groq_api_key.get_secret_value(), settings.groq_model,
-                                 settings.llm_timeout_s))  # fmt: skip
+                                 settings.llm_timeout_s))
     return FallbackLLM(providers, retries=settings.llm_retries, max_wait_s=settings.llm_max_wait_s)

@@ -14,7 +14,7 @@ PASSAGES = {  # query keyword -> (doc, chunk text, cross-encoder score)
     "spielberg": [("Steven Spielberg", "Steven Spielberg was born in 1946 in Cincinnati.", 7.0),
                   ("Spielberg fan page", "Spielberg was born in 1952.", 2.0)],
     "weather": [("Rain", "Rain is liquid water.", -6.0)],
-}  # fmt: skip
+}
 
 
 class FakeSearcher:
@@ -31,7 +31,7 @@ class FakeSearcher:
 class FakeStore:
     def get_chunks(self, doc_id, strategy, limit=1000):
         return [SimpleNamespace(id=f"{doc_id}-{i}", payload={"doc_id": doc_id, "title": "T", "text": f"part {i}",
-                                                             "chunk_index": i}) for i in range(3)]  # fmt: skip
+                                                             "chunk_index": i}) for i in range(3)]
 
 
 class ScriptedLLM:
@@ -74,7 +74,7 @@ def ask(llm, question="When was the director of Jaws born?", **params):
 def test_multi_hop_answer_with_citations_from_two_searches():
     llm = ScriptedLLM([search("Jaws director"), search("Steven Spielberg birth"),
                        submit("answered", "Jaws was directed by Spielberg [S1], born in 1946 [S2].", ["S1", "S2"])],
-                      [SUPPORTED])  # fmt: skip
+                      [SUPPORTED])
     out = ask(llm)
     assert out.status == "answered"
     assert [c.title for c in out.citations] == ["Jaws (film)", "Steven Spielberg"]
@@ -103,7 +103,7 @@ def test_retrieval_gate_refuses_when_nothing_relevant_was_found():
 def test_verifier_surfaces_a_conflict_the_model_missed():
     conflict = {"supported": True, "unsupported_claims": [], "conflict": True, "explanation": "two years",
                 "conflict_sides": [{"claim": "born in 1946", "source_id": "S1"},
-                                   {"claim": "born in 1952", "source_id": "S2"}]}  # fmt: skip
+                                   {"claim": "born in 1952", "source_id": "S2"}]}
     llm = ScriptedLLM([search("Spielberg"), submit("answered", "Born in 1946 [S1].", ["S1"])], [conflict])
     out = ask(llm)
     assert out.status == "conflict"
@@ -140,7 +140,7 @@ def test_tool_budget_and_iteration_cap_force_a_final_answer():
 def test_malformed_arguments_and_plain_text_are_fed_back_to_the_model():
     bad = [ToolCall("search_documents", {}, args_error="arguments are not valid JSON")]
     llm = ScriptedLLM([bad, "I think it is 1946.", search("Jaws"), submit("answered", "Spielberg [S1].", ["S1"])],
-                      [SUPPORTED])  # fmt: skip
+                      [SUPPORTED])
     out = ask(llm)
     assert out.status == "answered"
     history = llm.seen[2]
@@ -159,7 +159,7 @@ def test_invalid_submit_gets_an_error_for_every_call_in_the_turn():
 def test_get_document_reads_the_article_and_rejects_unknown_ids():
     llm = ScriptedLLM([search("Jaws"), [ToolCall("get_document", {"source_id": "S9"})],
                        [ToolCall("get_document", {"source_id": "s1"})],
-                       submit("answered", "It is in part 2 [S4].", ["S4"])], [SUPPORTED])  # fmt: skip
+                       submit("answered", "It is in part 2 [S4].", ["S4"])], [SUPPORTED])
     out = ask(llm)
     assert "unknown source_id" in [m for m in llm.seen[2] if m.role == "tool"][-1].result["error"]
     assert [p["source_id"] for p in [m for m in llm.seen[3] if m.role == "tool"][-1].result["passages"]] == ["S2", "S3", "S4"]

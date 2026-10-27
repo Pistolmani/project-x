@@ -98,7 +98,7 @@ HISTORY = [
             provider="groq"),
     Message("tool", tool_call_id="c1", tool_name="search", result={"chunks": []}),
     Message("tool", tool_call_id="c2", tool_name="search", result={"chunks": [1]}),
-]  # fmt: skip
+]
 
 
 def test_gemini_groups_parallel_tool_results_into_one_turn():
@@ -131,10 +131,10 @@ def test_compact_openai_format_shortens_only_older_tool_results():
     for n in range(3):
         history += [Message("assistant", "", [ToolCall("search", {"query": str(n)}, id=f"c{n}")], provider="groq"),
                     Message("tool", tool_call_id=f"c{n}", tool_name="search",
-                            result={"results": [{"source_id": f"S{n}", "title": "T", "text": long}]})]  # fmt: skip
+                            result={"results": [{"source_id": f"S{n}", "title": "T", "text": long}]})]
     def lengths(keep_full):
         return [len(json.loads(m["content"])["results"][0]["text"]) for m in to_openai("s", history, keep_full)
-                if m["role"] == "tool"]  # fmt: skip
+                if m["role"] == "tool"]
 
     assert lengths(2) == [304, 1000, 1000] and lengths(0) == [304, 304, 304]
     assert all(m["role"] != "tool" or len(m["content"]) > 1000 for m in to_openai("s", history))

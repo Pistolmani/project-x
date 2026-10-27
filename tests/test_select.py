@@ -25,7 +25,7 @@ def _q(i, *, split="validation", type_="bridge", level="hard", answer="Some Pers
     gold = gold or (f"G{i}a", f"G{i}b")
     context = tuple(gold) + tuple(f"D{i}_{k}" for k in range(8))
     return Question(f"q{i}", split, f"question {i}?", answer, type_, level,
-                    tuple((t, 0) for t in gold), context)  # fmt: skip
+                    tuple((t, 0) for t in gold), context)
 
 
 def _pool():
@@ -36,7 +36,7 @@ def _pool():
 
 
 CONFIG = SelectionConfig(seed=1, target_docs=1000, simple=3, multihop=3, unanswerable=2,
-                         unanswerable_spares=1, contradictory=2, retrieval=5, tuning=4)  # fmt: skip
+                         unanswerable_spares=1, contradictory=2, retrieval=5, tuning=4)
 
 
 def _available(questions):
@@ -57,7 +57,7 @@ def test_question_sharing_a_held_out_article_is_excluded():
     shared = ("Shared", "Other")
     qs = [_q(1, gold=shared), _q(2, gold=shared)] + _pool()[2:]
     config = SelectionConfig(seed=0, target_docs=1000, simple=1, multihop=1, unanswerable=1,
-                             unanswerable_spares=0, contradictory=1, retrieval=1, tuning=1)  # fmt: skip
+                             unanswerable_spares=0, contradictory=1, retrieval=1, tuning=1)
     for seed in range(20):
         sel = select(qs, _available(qs), SelectionConfig(**{**config.__dict__, "seed": seed}))
         picked = sel.simple + sel.multihop + sel.contradictory + sel.retrieval
@@ -72,7 +72,7 @@ def test_unanswerable_rules_and_no_question_used_twice():
         assert q.split == "validation" and q.type == "bridge" and is_distinctive_answer(q.answer)
     assert all(q.level == "easy" for q in sel.simple)
     ids = [q.id for q in sel.simple + sel.multihop + sel.contradictory + sel.retrieval
-           + sel.tuning + sel.unanswerable_candidates]  # fmt: skip
+           + sel.tuning + sel.unanswerable_candidates]
     assert len(ids) == len(set(ids))  # in particular: tuning never overlaps the retrieval eval set
     assert len(sel.tuning) == CONFIG.tuning
 

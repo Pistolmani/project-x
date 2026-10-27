@@ -66,9 +66,9 @@ class OnceLLM:
     def chat(self, system, messages, tools=None, response_schema=None):
         self.calls += 1
         native = types.Content(role="model", parts=[types.Part(function_call=types.FunctionCall(
-            id="c1", name="search_documents", args={"query": "a"}), thought_signature=b"\x01sig")])  # fmt: skip
+            id="c1", name="search_documents", args={"query": "a"}), thought_signature=b"\x01sig")])
         return LLMResponse("", [ToolCall("search_documents", {"query": "a"}, id="c1")], self.name, "m",
-                           Usage(10, 2), native)  # fmt: skip
+                           Usage(10, 2), native)
 
 
 def test_llm_cache_replays_tool_calls_and_the_native_turn():

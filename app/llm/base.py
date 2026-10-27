@@ -60,7 +60,7 @@ class LLMError(Exception):
     """A failed provider call. `retryable` = worth trying again (rate limit, timeout, 5xx)."""
 
     def __init__(self, provider: str, message: str, retryable: bool, status: int | None = None,
-                 retry_after: float | None = None):  # fmt: skip
+                 retry_after: float | None = None):
         super().__init__(f"{provider}: {message}")
         self.provider = provider
         self.retryable = retryable

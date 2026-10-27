@@ -3,9 +3,7 @@
     load (format-specific) -> render -> exact dedup by content hash -> near-duplicate check -> chunk
          -> embed -> upsert
 
-Exact duplicates are not indexed again. Near-duplicates (an edited copy) are indexed, because a document
-that changes one fact is exactly what conflict detection needs to see, but the response names the
-document it resembles.
+Near-duplicates are still indexed (a copy that changes one fact is a conflict to detect) but reported.
 
 Update is crash-safe by ordering: the new version's chunks are written first (they have their own point
 IDs), then the registry, then the old version's chunks are deleted. A crash in between leaves the old
@@ -47,7 +45,7 @@ class IngestResult:
 
 class IngestionService:
     def __init__(self, store: QdrantStore, dense, sparse, tokenizer, settings,
-                 strategies: list[ChunkingStrategy] | None = None, cache: Cache | None = None):  # fmt: skip
+                 strategies: list[ChunkingStrategy] | None = None, cache: Cache | None = None):
         self.store = store
         self.dense = dense
         self.sparse = sparse
@@ -66,7 +64,7 @@ class IngestionService:
         existing = self.store.find_by_hash(sha)
         if existing is not None:
             return IngestResult(existing["doc_id"], "duplicate", existing.get("version", 1), existing["title"],
-                                _counts(existing), duplicate_of=existing["doc_id"])  # fmt: skip
+                                _counts(existing), duplicate_of=existing["doc_id"])
         near = self.near_duplicate(text)
         doc_id = str(uuid.uuid4())
         counts = self._index(doc_id, doc, version=1)
@@ -79,12 +77,11 @@ class IngestionService:
         return IngestResult(doc_id, "created", 1, doc.title, counts, near_duplicate_of=near)
 
     def near_duplicate(self, text: str) -> dict | None:
-        """The most similar existing document if it is a near-copy of `text`, else None. One embedding of
-        the opening finds candidates; each is then compared in full by shingle overlap."""
+        """The existing document `text` is a near-copy of, if any: candidates by embedding, then shingles."""
         strategy = self.strategies[0].value
         vector = self.dense.embed_documents([text[:2000]])[0]
         same_strategy = models.Filter(must=[models.FieldCondition(key="chunking_strategy",
-                                                                  match=models.MatchValue(value=strategy))])  # fmt: skip
+                                                                  match=models.MatchValue(value=strategy))])
         hits = self.store.search_lists(vector, None, same_strategy, limit=4 * NEAR_DUPLICATE_CANDIDATES).get("dense", [])
         candidates = list(dict.fromkeys(h.payload["doc_id"] for h in hits))[:NEAR_DUPLICATE_CANDIDATES]
         mine, best = shingles(text), None
@@ -104,12 +101,12 @@ class IngestionService:
         sha = content_hash(render(doc.sections).text)
         if sha == current["sha256"]:
             return IngestResult(doc_id, "duplicate", current.get("version", 1), current["title"], _counts(current),
-                                duplicate_of=doc_id)  # fmt: skip
+                                duplicate_of=doc_id)
         version = current.get("version", 1) + 1
         counts = self._index(doc_id, doc, version)  # 1. new chunks, alongside the old ones
         self.store.upsert_documents([_record(doc_id, doc, sha, version, counts,  # 2. registry points at them
                                              created=current.get("created_at"), updated=_now())
-                                     | {"tag": current.get("tag")}])  # fmt: skip
+                                     | {"tag": current.get("tag")}])
         self.store.delete_old_versions(doc_id, keep_version=version)  # 3. only now drop the old ones
         self._changed()
         return IngestResult(doc_id, "updated", version, doc.title, counts)
@@ -134,7 +131,7 @@ class IngestionService:
                     "n_tokens": c.n_tokens, "version": version, "sha256": content_hash(c.text),
                     "created_at": _now()}, version)
                 for c, vec, sp in zip(chunks, self.dense.embed_documents(texts), self.sparse.embed_documents(texts))
-            ]  # fmt: skip
+            ]
             self.store.upsert_chunks(points)
             counts[strategy.value] = len(points)
         return counts
@@ -147,7 +144,7 @@ class IngestionService:
 def _record(doc_id, doc: LoadedDocument, sha, version, counts, created, updated) -> dict:
     return {**{NUM_CHUNKS_PREFIX + s: n for s, n in counts.items()}, "doc_id": doc_id, "filename": doc.filename,
             "format": doc.format, "title": doc.title, "source": doc.filename, "sha256": sha, "version": version,
-            "metadata": doc.metadata, "created_at": created, "updated_at": updated}  # fmt: skip
+            "metadata": doc.metadata, "created_at": created, "updated_at": updated}
 
 
 def _counts(record: dict) -> dict[str, int]:

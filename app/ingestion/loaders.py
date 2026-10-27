@@ -14,7 +14,7 @@ from app.ingestion.text import normalize
 
 MAX_BYTES = 10 * 1024 * 1024
 FORMATS = {".pdf": "pdf", ".html": "html", ".htm": "html", ".md": "markdown", ".markdown": "markdown",
-           ".txt": "text"}  # fmt: skip
+           ".txt": "text"}
 
 
 class LoaderError(ValueError):
@@ -34,7 +34,7 @@ def load(data: bytes, filename: str) -> LoadedDocument:
     fmt = FORMATS.get(PurePath(filename).suffix.lower())
     if fmt is None:
         raise LoaderError(f"unsupported file type {PurePath(filename).suffix or '(none)'}; "
-                          f"supported: {', '.join(sorted(FORMATS))}")  # fmt: skip
+                          f"supported: {', '.join(sorted(FORMATS))}")
     if len(data) > MAX_BYTES:
         raise LoaderError(f"file is larger than {MAX_BYTES // (1024 * 1024)} MB")
     title, sections, metadata = {"pdf": _pdf, "html": _html, "markdown": _markdown, "text": _text}[fmt](data)

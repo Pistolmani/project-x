@@ -81,12 +81,12 @@ def _cand(pid, title, text, rrf, n_tokens=100):
 
 def test_reranker_writes_explainable_features_in_range():
     cands = [_cand("a", "Arthur's Magazine", "Arthur's Magazine was an American monthly founded in 1844.", 0.03),
-             _cand("b", "Radio City", "Radio City is India's first private FM radio station.", 0.02)]  # fmt: skip
+             _cand("b", "Radio City", "Radio City is India's first private FM radio station.", 0.02)]
     ranked = FeatureReranker().rerank(QUERY, cands)
     assert ranked[0].point_id == "a"
     for c in ranked:
         assert set(c.features) == {"fusion_prior", "title_match", "term_coverage", "entity_overlap",
-                                   "exact_phrase", "answer_type", "length_ok"}  # fmt: skip
+                                   "exact_phrase", "answer_type", "length_ok"}
         assert all(0.0 <= v <= 1.0 for v in c.features.values())
 
 
