@@ -16,9 +16,38 @@
 
 - **Primary AI tools:** Cursor agent (Claude), Cursor CLI, Cursor subagents; Claude Code (Claude Opus 5.5)
   for design reviews and doc edits.
-- **Where AI helped most:** _TBD_
-- **Where AI was deliberately NOT used / where the human drove:** all architecture decisions (see `GRILL-ME.md`).
-- **Verification practices:** _TBD_
+- **Where AI helped most:** writing most of the code and tests around the core components (ingestion
+  pipeline, Qdrant store, agent loop, API, Streamlit UI, evaluation runners, deployment); design reviews
+  before any code existed (full-article dataset, no recency/authority signals, exact-dedup only, whole-lead
+  swap); finding problems in real runs that the fakes could not (Gemini free-tier limits, an over-strict
+  verifier, the relevance floor scoring the wrong query, Groq's 8k-token limit, deploy path/secrets
+  issues); fitting the free host (ONNX backend and slim requirements, with parity measured first).
+- **Where AI was deliberately NOT used / where the human drove:**
+  - **The human made all the important decisions:** every architecture, evaluation and build decision
+    (D1–D11, E1–E5, A1–A8, see `GRILL-ME.md`), and the key calls during the build: which design-review
+    findings to adopt, keeping the default fusion weights after tuning overfit, each phase plan, and
+    moving hosting to Streamlit Community Cloud when HF Spaces went paid. The AI proposed options and
+    recommendations; the human chose each one.
+  - **Core components written by the human** and handed to the AI to integrate into the codebase:
+    | Component | Where |
+    |-----------|-------|
+    | Custom weighted RRF fusion | `app/retrieval/fusion.py` |
+    | Recall@K and MRR | `evaluation/retrieval_metrics.py` |
+    | Fixed chunking with overlap | `_fixed_spans` in `app/ingestion/chunking.py` |
+    | Relevance floor + citation check | `app/agent/gates.py` |
+    | Max 2 chunks per article | `cap_per_doc` in `app/retrieval/searcher.py` |
+  - No AI assistants are used in the technical interview.
+- **Verification practices:** a written plan approved before each phase was built; pytest coverage for
+  every module, plus runs against the live Qdrant Cloud cluster and LLMs rather than mocks alone; external
+  facts checked against sources before they went into the docs (HotpotQA paper, Qdrant docs, HF pricing);
+  report numbers read from the files in `results/` rather than typed by hand, and report claims checked
+  against the data before commit; AI mistakes reported and corrected rather than hidden (the chunk-metric
+  overclaim, a too-loose absence check, a test that passed on a broken layout); no tuning on the test set
+  (weight tuning overfit, so the defaults were kept; the verifier was not tuned on eval results); API keys
+  never shared with the AI.
+- **Correction to the session log:** Sessions 4 and 5 describe the AI as writing the components in
+  the table above. The human wrote them and gave them to the AI, which integrated them; the log entries
+  were worded inaccurately at the time.
 
 ---
 
@@ -115,6 +144,8 @@
   HotpotQA/Wikipedia pipeline, selection rules, two-stage `build_corpus` — with pytest coverage.
 - Wrote Phase 2a: custom weighted RRF, feature re-ranker, cross-encoder wrapper, searcher, retrieval
   metrics and a quick comparison runner — with pytest coverage (65 tests total, all passing).
+- *Correction:* the fixed chunker with overlap (`_fixed_spans`), the custom weighted RRF, Recall@K/MRR and
+  the per-article cap (`cap_per_doc`) were written by the human and integrated by the AI (see Summary).
 - Ran a 2k-article sample end to end and measured: article length (mean 1,473 tokens), chunk counts
   (recursive 9.8 / fixed 7.0 per article), GPU indexing speed (~40 s per 2k articles per strategy), and
   an absence-check failure rate (11 of 30 unanswerable candidates) that led to more spare candidates.
@@ -146,6 +177,8 @@
   layer (Gemini + Groq + fallback), tools and agent loop, gates (citation check, calibrated relevance
   floor, verifier), SQLite cache, PDF/HTML/Markdown/TXT loaders, add/update/delete service, FastAPI app —
   with pytest coverage (107 unit tests passing).
+- *Correction:* the relevance floor and citation check in `gates.py` were written by the human and
+  integrated by the AI (see Summary).
 - Ran real questions and found problems the fakes could not: Gemini Flash's free tier is 20 requests/day
   (switched the investigator to Flash-Lite), provider retry delays were ignored (now honored), the first
   verifier prompt was too strict (refused a correct answer), and one "unanswerable" eval question is
@@ -256,3 +289,12 @@
 
 **Tools / models used**
 - Claude Code (Claude Opus 5.5); Streamlit Community Cloud; Qdrant Cloud; FastEmbed / ONNX Runtime.
+
+### 2026-10-27 — Session 9: AI usage summary and attribution correction
+
+**What the AI did (Claude Code, cloud session)**
+- Drafted the Summary from this log. The human pointed out that the log credited the AI with components
+  the human wrote; the AI added the human-written components table and correction notes to Sessions 4–5.
+
+**What the human decided / owns**
+- The attribution correction and the final wording of the Summary.
