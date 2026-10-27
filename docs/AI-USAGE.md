@@ -1,7 +1,6 @@
 # AI Usage Report
 
-AI assistants were used while building this project, as the task allows. None are used in the technical
-interview. This report says which tools I used, what they did, what I did myself, and how I checked
+AI assistants were used while building this project, as the task allows. This report says which tools I used, what they did, what I did myself, and how I checked
 their work. It was kept during the build, not reconstructed at the end.
 
 ## Tools
