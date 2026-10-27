@@ -21,9 +21,9 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from ui.client import BackendError, get_client
-from ui.pages.ask import render_ask_page
-from ui.pages.documents import render_documents_page
-from ui.pages.evaluation import render_evaluation_page
+from ui.views.ask import render_ask_page
+from ui.views.documents import render_documents_page
+from ui.views.evaluation import render_evaluation_page
 
 st.set_page_config(page_title="AI Investigation Engine", page_icon="🔎", layout="wide")
 

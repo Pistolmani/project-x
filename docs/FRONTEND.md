@@ -21,7 +21,7 @@ and deployed.
 
 ---
 
-## 2. Page 1 — Documents (`ui/pages/documents.py`)
+## 2. Page 1 — Documents (`ui/views/documents.py`)
 
 - **Upload:** drag-and-drop one or more files (PDF / HTML / Markdown / TXT — `BACKEND.md` §3.1).
   Each file reports `created`, `already indexed` (exact `sha256` duplicate), or the loader's error. A
@@ -40,7 +40,7 @@ and deployed.
 
 ---
 
-## 3. Page 2 — Ask (`ui/pages/ask.py`)
+## 3. Page 2 — Ask (`ui/views/ask.py`)
 
 - **Question box + example questions:** one-click simple, multi-hop, and unanswerable example prompts.
 - **Sidebar config panel (mapped to `/ask` and `/ask/stream` parameters):**
@@ -78,7 +78,7 @@ and deployed.
 
 ---
 
-## 4. Page 3 — Evaluation dashboard (`ui/pages/evaluation.py`)
+## 4. Page 3 — Evaluation dashboard (`ui/views/evaluation.py`)
 
 - **Load-only from `GET /eval/results` (`results/`):** the dashboard reads tracked JSON artifacts rather
   than triggering ~250+ LLM calls live in the browser (which would exhaust the demo's free-tier quota).
@@ -115,8 +115,8 @@ and deployed.
 | Spec requirement | Satisfied by |
 |------------------|--------------|
 | Functional UI | Streamlit app (`ui/streamlit_app.py`), three pages |
-| Document management (add/update/delete) | Page 1 (`ui/pages/documents.py`, §2) |
-| Q&A with source viewing | Page 2 (`ui/pages/ask.py`, §3), inline citations + chunk & parent-doc viewer |
+| Document management (add/update/delete) | Page 1 (`ui/views/documents.py`, §2) |
+| Q&A with source viewing | Page 2 (`ui/views/ask.py`, §3), inline citations + chunk & parent-doc viewer |
 | Shows refusal / contradiction behavior | Page 2 (§3) distinct banners + gate trace |
-| Config comparison + failure modes (visual) | Page 3 (`ui/pages/evaluation.py`, §4) |
+| Config comparison + failure modes (visual) | Page 3 (`ui/views/evaluation.py`, §4) |
 | Streaming (bonus) | Page 2 live SSE progress stream (`POST /ask/stream`, §3) |

@@ -206,7 +206,7 @@ class FakeClient:
 
 def _ask_app(client: FakeClient) -> AppTest:
     def script():
-        from ui.pages.ask import render_ask_page
+        from ui.views.ask import render_ask_page
 
         render_ask_page()
 
@@ -259,7 +259,7 @@ def test_documents_page_lists_uploads_views_chunks_and_confirms_delete():
     client = FakeClient()
 
     def script():
-        from ui.pages.documents import render_documents_page
+        from ui.views.documents import render_documents_page
 
         render_documents_page()
 
@@ -284,7 +284,7 @@ def test_evaluation_page_renders_comparisons_and_tables():
     client = FakeClient()
 
     def script():
-        from ui.pages.evaluation import render_evaluation_page
+        from ui.views.evaluation import render_evaluation_page
 
         render_evaluation_page()
 
@@ -311,7 +311,7 @@ def test_ask_page_shows_an_error_when_the_stream_ends_without_an_answer():
 
 def test_evaluation_findings_are_computed_from_the_loaded_results():
     def script():
-        from ui.pages.evaluation import render_evaluation_page
+        from ui.views.evaluation import render_evaluation_page
 
         render_evaluation_page()
 
@@ -439,3 +439,11 @@ def test_ask_page_shows_guardrail_blocks_and_flagged_passages():
     at.button(key="btn_ask").click().run()
     assert any("instruction-like text" in w.value for w in at.warning)
     assert any("Output guard" in m.value and "classifier unavailable" in m.value for m in at.markdown)
+
+
+def test_no_pages_folder_next_to_the_entry_script():
+    # Streamlit runs files in a pages/ folder beside the entry script as standalone pages (e.g. a fresh
+    # session opened at /evaluation), bypassing st.navigation and the entry script's sys.path setup.
+    from app import PROJECT_ROOT
+
+    assert not (PROJECT_ROOT / "ui" / "pages").exists()
