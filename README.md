@@ -1,12 +1,11 @@
 # AI Investigation Engine
 
-An AI system that **investigates large document sets** — not "chat with a PDF." It answers complex
+An AI system that investigates large document sets. It answers complex
 questions that require cross-referencing multiple sources, comparing conflicting information, and drawing
 reasoned conclusions, **always with citations**, and **refuses rather than hallucinates** when evidence is
 missing or contradictory.
 
-**Live demo:** https://project-x-1.streamlit.app (free tier: the first visit after a quiet spell wakes the
-app and loads the models, 1–3 minutes). The 50k-article corpus is read-only there; uploads, updates and
+**Live demo:** https://project-x-1.streamlit.app. The 50k-article corpus is read-only there; uploads, updates and
 deletes work on your own documents.
 
 > Decisions & rationale: [`GRILL-ME.md`](./docs/GRILL-ME.md). Modules: [`BACKEND.md`](./docs/BACKEND.md) ·
