@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     llm_timeout_s: float = 30
     llm_retries: int = 2  # per provider, for retryable errors only
     llm_max_wait_s: float = 60  # longest provider-requested wait before moving to the next provider
+    # Guardrails (app/agent/guard.py), both on Groq's free tier, measured 2026-10-27: the policy classifier
+    # allows 2,000 tokens/min, Prompt Guard 30 requests/min (so it screens questions, never passages).
+    guard_model: str = "openai/gpt-oss-safeguard-20b"
+    guard_detector_model: str = "meta-llama/llama-prompt-guard-2-86m"
+    max_question_chars: int = 1000
 
     dense_model: str = "BAAI/bge-small-en-v1.5"
     sparse_model: str = "Qdrant/bm25"

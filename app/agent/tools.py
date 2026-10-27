@@ -9,6 +9,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
+from app.agent.guard import find_injection
+from app.agent.prompts import PASSAGE_WARNING
 from app.llm.base import ToolCall, ToolSpec
 from app.retrieval.searcher import SearchParams, Searcher
 from app.store.qdrant_store import QdrantStore
@@ -54,6 +56,7 @@ class Source:
     ce_score: float | None  # cross-encoder score for the query that surfaced it (None if read via get_document)
     query: str | None
     payload: dict[str, Any] = field(repr=False, default_factory=dict)
+    suspicious: str | None = None  # an instruction-like phrase found in the text (guard.find_injection)
 
 
 class Toolbox:
@@ -127,14 +130,19 @@ class Toolbox:
             return source
         handle = f"S{len(self.sources) + 1}"
         self._by_point[point_id] = handle
+        text = payload.get("text", "")
         self.sources[handle] = Source(handle, point_id, payload.get("doc_id", ""), payload.get("title", ""),
-                                      payload.get("text", ""), ce_score, query, payload)  # fmt: skip
+                                      text, ce_score, query, payload, find_injection(text))  # fmt: skip
         return self.sources[handle]
 
     @staticmethod
     def _show(source: Source) -> dict[str, str]:
         # Passage text is untrusted data; the system prompt says instructions inside it are never followed.
-        return {"source_id": source.handle, "title": source.title, "text": source.text}
+        # It travels as a JSON string, so a passage cannot fake the end of its own result or another source.
+        shown = {"source_id": source.handle, "title": source.title, "text": source.text}
+        if source.suspicious:
+            shown["warning"] = PASSAGE_WARNING
+        return shown
 
 
 def _required_str(args: dict, key: str) -> str:

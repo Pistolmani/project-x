@@ -173,7 +173,7 @@ def test_single_shot_mode_searches_once_and_runs_gates():
         "Who directed Jaws?", AgentParams(agentic=False), on_event=events.append
     )
     assert out.status == "answered" and out.searched == ["Who directed Jaws?"]
-    assert [e["stage"] for e in events] == ["searching", "found", "submitting", "verifying"]
+    assert [e["stage"] for e in events] == ["guard", "searching", "found", "submitting", "verifying", "guard"]
     assert out.usage["llm_calls"] == 2  # one single-shot answer + one verifier
 
 

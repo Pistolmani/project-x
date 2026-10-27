@@ -1,7 +1,7 @@
 # FRONTEND — Streamlit UI
 
 > The user-facing app for document management and Q&A with source viewing. Decision IDs refer to
-> `GRILL-ME.md`. **Framework:** Streamlit (`ui/streamlit_app.py`, D5). **Pages:** three (`st.navigation`, D11).
+> `DECISIONS.md`. **Framework:** Streamlit (`ui/streamlit_app.py`, D5). **Pages:** three (`st.navigation`, D11).
 > The UI is a **thin client** (`ui/client.py`) — all business logic lives in the FastAPI backend
 > (`BACKEND.md`); the UI only calls its HTTP API.
 
@@ -59,6 +59,8 @@ and deployed.
     queries searched.
   - **Sources conflict (`conflict`):** conflict banner stating both sides (`[S#]`) and the verifier's
     explanation.
+  - **Blocked (`blocked`):** 🛡️ banner with the guardrail's category and reason (`BACKEND.md` §7). A
+    cited passage that contains instruction-like text gets a ⚠ warning on its source card.
 - **Sources & parent document viewer:** each cited passage shows the chunk text, its cross-encoder
   score, and an **Open parent document** button that loads the full article's chunks in order.
   Fixed-size chunks overlap by 32 tokens and ignore sentence boundaries, so the display
@@ -68,8 +70,9 @@ and deployed.
   edges with "…"** and **shows the text literally**: line breaks kept and Markdown characters escaped, so
   list-style articles don't run together.
 - **"How it got here" trace (expandable):** shows live stream events, every search query, each LLM/tool
-  step with provider/model, latency and token counts, and the three anti-hallucination gates (citation
-  check, relevance floor, verifier) with why each passed or failed.
+  step with provider/model, latency and token counts, the input and output guardrails (which checks ran,
+  and whether the classifier was unavailable), and the three anti-hallucination gates (citation check,
+  relevance floor, verifier) with why each passed or failed.
 
 ---
 
@@ -97,8 +100,8 @@ and deployed.
 - **Honesty first:** refusals and contradictions are first-class UI states, not edge cases — this is the
   product's whole point.
 - **Tested (`tests/test_ui.py`):** Streamlit `AppTest` suite covers all three pages, config toggles,
-  document view/delete confirmation, and `answered` / `insufficient` / `conflict` states against a fake
-  client.
+  document view/delete confirmation, and `answered` / `insufficient` / `conflict` / `blocked` states
+  against a fake client.
 
 ---
 

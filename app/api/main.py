@@ -142,6 +142,7 @@ def create_app(engine=None, ingestion=None) -> FastAPI:
     @app.post("/ask")
     def ask(body: AskRequest, request: Request):
         request.app.state.ask_limit.take()
+        _force_guard(request, body)
         answer = request.app.state.engine.agent.ask(body.question, body.params)
         # An LLM or store outage is a 503 that still carries the structured answer (status "error"),
         # never a fabricated reply.
@@ -151,6 +152,7 @@ def create_app(engine=None, ingestion=None) -> FastAPI:
     def ask_stream(body: AskRequest, request: Request):
         """Server-Sent Events stream: live progress events while the agent works, then the final answer."""
         request.app.state.ask_limit.take()
+        _force_guard(request, body)
         agent = request.app.state.engine.agent
         events: queue.Queue[dict | None] = queue.Queue()
 
@@ -242,6 +244,12 @@ def _read(request: Request, file: UploadFile) -> bytes:
     if len(data) > limit * 1024 * 1024:
         raise UploadTooLarge(limit)
     return data
+
+
+def _force_guard(request: Request, body) -> None:
+    """Public demo: visitors cannot switch the guardrails off through `params`."""
+    if _settings(request.app).demo_mode:
+        body.params.guard = True
 
 
 def _check_mutable(request: Request, doc_id: str) -> None:

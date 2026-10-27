@@ -24,6 +24,7 @@ class Passage:
     start_char: int | None = None
     end_char: int | None = None
     best_ce: float | None = None
+    suspicious: str | None = None  # instruction-like phrase found in one of its chunks
 
 
 def group_citations(citations: list[dict[str, Any]]) -> list[Passage]:
@@ -34,7 +35,7 @@ def group_citations(citations: list[dict[str, Any]]) -> list[Passage]:
         start, end = c.get("start_char"), c.get("end_char")
         new = Passage(c.get("doc_id", ""), c.get("title") or c.get("doc_id", ""), c.get("text", ""),
                       [c["source_id"]], [c["chunk_index"]] if c.get("chunk_index") is not None else [],
-                      start, end, c.get("ce_score"))  # fmt: skip
+                      start, end, c.get("ce_score"), c.get("suspicious"))  # fmt: skip
         target = next((p for p in passages if _joinable(p, new)), None)
         if target is None:
             passages.append(new)
@@ -60,6 +61,7 @@ def _merge(a: Passage, b: Passage) -> None:
     a.chunk_indices = sorted(set(a.chunk_indices + b.chunk_indices))
     scores = [s for s in (a.best_ce, b.best_ce) if s is not None]
     a.best_ce = max(scores) if scores else None
+    a.suspicious = a.suspicious or b.suspicious
 
 
 def excerpt(text: str, start_char: int | None) -> str:

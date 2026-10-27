@@ -1,7 +1,8 @@
 """The agentic RAG loop behind `POST /ask` (BACKEND.md §5.2).
 
-    plan -> search (repeatedly, refining) -> read -> submit_answer
-         -> citation check -> retrieval gate -> verifier (groundedness + contradiction) -> answer / refuse
+    input guard -> plan -> search (repeatedly, refining) -> read -> submit_answer
+         -> citation check -> retrieval gate -> verifier (groundedness + contradiction) -> output guard
+         -> answer / refuse / block
 
 The LLM decides how to investigate; the gates after it are plain code, so a refusal or a surfaced conflict
 can be traced to the exact check that produced it (`AgentAnswer.gates`).
@@ -16,12 +17,13 @@ from qdrant_client.http.exceptions import ResponseHandlingException, UnexpectedR
 
 from app.agent import prompts
 from app.agent.gates import Verifier, check_citations, passes_relevance_floor
+from app.agent.guard import Guard
 from app.agent.tools import SUBMIT, Toolbox
 from app.llm.base import LLM, LLMUnavailable, Message
 from app.retrieval.searcher import SearchParams, Searcher
 from app.store.qdrant_store import QdrantStore
 
-Status = Literal["answered", "insufficient", "conflict", "error"]
+Status = Literal["answered", "insufficient", "conflict", "blocked", "error"]
 
 REFUSAL = "I don't have enough information in the documents to answer this."
 
@@ -35,6 +37,7 @@ class AgentParams(BaseModel):
     # blocks 71% of held-out (unanswerable) ones; None disables the gate.
     relevance_floor: float | None = 3.92
     verify: bool = True  # groundedness + contradiction check (one extra LLM call)
+    guard: bool = True  # input and output guardrails (guard.py); forced on in the public demo
 
 
 @dataclass
@@ -50,6 +53,7 @@ class Citation:
     chunk_index: int | None = None
     start_char: int | None = None
     end_char: int | None = None
+    suspicious: str | None = None  # instruction-like phrase in the passage (prompt injection attempt)
 
 
 @dataclass
@@ -69,11 +73,13 @@ class AgentAnswer:
 
 
 class Agent:
-    def __init__(self, llm: LLM, searcher: Searcher, store: QdrantStore, verifier_llm: LLM | None = None):
+    def __init__(self, llm: LLM, searcher: Searcher, store: QdrantStore, verifier_llm: LLM | None = None,
+                 guard: Guard | None = None):  # fmt: skip
         self.llm = llm
         self.verifier_llm = verifier_llm or llm  # a different model spreads the free-tier quota
         self.searcher = searcher
         self.store = store
+        self.guard = guard or Guard()  # without a classifier: length, prompt-leak and pattern checks only
 
     def ask(
         self,
@@ -87,11 +93,16 @@ class Agent:
         toolbox = Toolbox(self.searcher, self.store, params.search)
         out = AgentAnswer(question, "error", "")
         try:
+            if params.guard and not self._input_allowed(question, out, emit):
+                out.ms = round((time.perf_counter() - start) * 1000, 1)
+                return out
             if params.agentic:
                 submitted = self._investigate(question, params, toolbox, out, emit)
             else:
                 submitted = self._single_shot(question, toolbox, out, emit)
             self._finalize(question, submitted, params, toolbox, out, emit)
+            if params.guard:
+                self._guard_output(question, out, emit)
         except LLMUnavailable as e:
             out.status, out.answer, out.error = "error", "", f"LLM unavailable: {e}"
         except (UnexpectedResponse, ResponseHandlingException) as e:
@@ -153,7 +164,9 @@ class Agent:
         from app.llm.base import ToolCall
 
         result = self._run_tool(ToolCall(SEARCH.name, {"query": question}), toolbox, out, emit)
-        passages = "\n\n".join(f"[{p['source_id']}] ({p['title']})\n{p['text']}" for p in result.get("results", []))
+        passages = "\n\n".join(
+            f"[{p['source_id']}] ({p['title']})" + (f" WARNING: {p['warning']}" if p.get("warning") else "")
+            + f"\n{p['text']}" for p in result.get("results", []))  # fmt: skip
         prompt = f"Question: {question}\n\nPassages:\n{passages or '(no passages found)'}\n\n{prompts.SINGLE_SHOT}"
         emit({"type": "progress", "stage": "submitting", "message": "drafting answer…"})
         response = self._chat(prompts.INVESTIGATOR, [Message("user", prompt)], [SUBMIT], out)
@@ -199,6 +212,39 @@ class Agent:
                           "tool_calls": [c.name for c in response.tool_calls],
                           "ms": round((time.perf_counter() - step_start) * 1000, 1)})  # fmt: skip
         return response
+
+    # --- the guardrails -------------------------------------------------------------------------
+
+    def _input_allowed(self, question: str, out: AgentAnswer, emit: Callable[[dict[str, Any]], None]) -> bool:
+        emit({"type": "progress", "stage": "guard", "message": "checking the question…"})
+        verdict = self.guard.check_question(question)
+        out.gates["guard"] = {"input": verdict.as_gate()}
+        if not verdict.allowed:
+            out.status = "blocked"
+            out.answer = prompts.BLOCKED_SELF_HARM if verdict.category == "self_harm" else prompts.BLOCKED
+        return verdict.allowed
+
+    def _guard_output(self, question: str, out: AgentAnswer, emit: Callable[[dict[str, Any]], None]) -> None:
+        """Check what the model wrote before the user reads it. Answers and conflicts are blocked whole;
+        a refusal only loses the model's explanation, since the fixed refusal sentence is safe."""
+        written = out.answer.removeprefix(REFUSAL).strip() if out.status == "insufficient" else out.answer
+        if not written:
+            return
+        emit({"type": "progress", "stage": "guard", "message": "checking the answer…"})
+        verdict = self.guard.check_answer(question, written)
+        gate = verdict.as_gate()
+        # An unreachable classifier passes text the gates already grounded (answers, conflicts), but not
+        # a refusal's explanation, which no gate has checked.
+        if verdict.error and out.status == "insufficient":
+            verdict.allowed = gate["passed"] = False
+            gate["reason"] = "explanation dropped: the output classifier was unavailable"
+        out.gates.setdefault("guard", {})["output"] = gate
+        if verdict.allowed:
+            return
+        if out.status == "insufficient":
+            out.answer = REFUSAL
+        else:
+            out.status, out.answer, out.citations = "blocked", prompts.BLOCKED_ANSWER, []
 
     # --- the gates ------------------------------------------------------------------------------
 
@@ -266,4 +312,4 @@ def _parse_submit(args: dict) -> dict | str:
 def _citation(toolbox: Toolbox, handle: str) -> Citation:
     s = toolbox.sources[handle]
     return Citation(handle, s.point_id, s.doc_id, s.title, s.text, s.ce_score, s.payload.get("chunk_index"),
-                    s.payload.get("start_char"), s.payload.get("end_char"))
+                    s.payload.get("start_char"), s.payload.get("end_char"), s.suspicious)

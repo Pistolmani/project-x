@@ -141,6 +141,13 @@ def _render_answer(client: BackendClient, ans: dict[str, Any], progress_log: lis
         verdict = (ans.get("gates") or {}).get("verifier") or {}
         if verdict.get("explanation"):
             st.caption(f"Verifier note: {verdict['explanation']}")
+    elif status == "blocked":
+        st.error("🛡️ **Blocked by a guardrail**")
+        st.markdown(text)
+        guard = (ans.get("gates") or {}).get("guard") or {}
+        stopped = next((g for g in (guard.get("input"), guard.get("output")) if g and not g.get("passed")), None)
+        if stopped:
+            st.caption(f"Reason ({stopped.get('category')}): {stopped.get('reason')}")
     else:
         st.error(f"❌ **Service error:** {ans.get('error') or 'The engine could not complete the request.'}")
 
@@ -151,6 +158,9 @@ def _render_answer(client: BackendClient, ans: dict[str, Any], progress_log: lis
         for passage in passages:
             sid, title, doc_id = passage.source_ids[0], passage.title, passage.doc_id
             with st.expander(label(passage), expanded=True):
+                if passage.suspicious:
+                    st.warning(f"⚠️ This passage contains instruction-like text (\"{as_plain_markdown(passage.suspicious)}\"); "
+                               "the model was told to treat it as data.")  # fmt: skip
                 st.markdown(as_plain_markdown(excerpt(passage.text, passage.start_char)))
                 if doc_id and st.button(
                     f"Open parent document ({title})", key=f"open_parent_{sid}_{doc_id}"
@@ -223,7 +233,17 @@ def _render_trace(ans: dict[str, Any], progress_log: list[str]) -> None:
                     )
 
         gates = ans.get("gates") or {}
-        if gates:
+        guard = gates.get("guard") or {}
+        if guard:
+            st.markdown("**Guardrails:**")
+            for side in ("input", "output"):
+                if g := guard.get(side):
+                    badge = "✅ passed" if g.get("passed") else f"🛡️ blocked ({g.get('category')})"
+                    note = f" — {g['reason']}" if g.get("reason") else ""
+                    fallback = f" · classifier unavailable: `{g['error']}`" if g.get("error") else ""
+                    st.markdown(f"- **{side.capitalize()} guard** (`{', '.join(g.get('checks', []))}`): "
+                                f"{badge}{note}{fallback}")  # fmt: skip
+        if {k: v for k, v in gates.items() if k != "guard"}:
             st.markdown("**Anti-hallucination gates:**")
             cit = gates.get("citations")
             if cit is not None:
