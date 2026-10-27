@@ -122,6 +122,8 @@ there. Locally the project uses 3.11.
 | **Host CPU for embedding** | Too slow for 50k docs. | Offline/Colab ingestion (§4); the host only embeds queries and visitors' uploads. |
 | **Host RAM (~2.7 GB) and CPU latency** | Re-ranking 20 passages per search on 2 shared CPU cores; a multi-hop `/ask` takes ~30–60 s locally on CPU. | ONNX models, re-ranker batch 8, embed batch 16, memory arena off, one inference at a time (§5); progress streams to the UI while the agent works. |
 | **Shared LLM quota on a public URL** | One visitor could spend the day's free Gemini/Groq requests. | `ASK_LIMIT_PER_HOUR` (60) plus the answer cache. |
+| **Guardrail classifier quota** | Groq's free `gpt-oss-safeguard-20b` allows 2,000 tokens/min, about four checks a minute (two per question). | Verdicts are cached; when it is rate-limited the input guard falls back to Prompt Guard 2 (30 requests/min) and plain patterns, and the output guard drops unverified refusal explanations (`BACKEND.md` §7). |
+| **Metrics are in memory** | `GET /metrics` counts since the process started; the host restarts the process when the app sleeps or redeploys. | Acceptable for a demo; per-answer traces and the JSON log line per answer still record each request. |
 
 ---
 

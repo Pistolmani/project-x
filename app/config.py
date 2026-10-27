@@ -47,7 +47,7 @@ class Settings(BaseSettings):
     results_dir: Path = PROJECT_ROOT / "results"
     cache_path: Path = PROJECT_ROOT / "data" / "cache.sqlite"
 
-    # Public demo (the HF Space): visitors may only change documents they uploaded there, and /ask is capped
+    # Public demo (the live Streamlit app): visitors may only change documents they uploaded there, and /ask is capped
     # so one visitor cannot spend the shared free-tier LLM quota. Off locally, so the eval scripts can plant
     # and remove their documents.
     demo_mode: bool = False

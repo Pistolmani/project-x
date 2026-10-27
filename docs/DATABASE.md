@@ -8,9 +8,9 @@
 
 ## 1. Why Qdrant, and the persistence boundary (D2, D4, D6)
 
-The Hugging Face Space that runs our code has an **ephemeral disk** — it resets on rebuild. So **all
-durable state lives in Qdrant Cloud**, which is a hosted, persistent service. The Space is treated as
-**stateless compute**. This is the single most important fact about our data layer, and the reason we did
+The host that runs our code (Streamlit Community Cloud; the original plan was a Hugging Face Space) has an
+**ephemeral disk**: it resets on every restart or redeploy. So **all durable state lives in Qdrant Cloud**,
+which is a hosted, persistent service. The app is treated as **stateless compute**. This is the single most important fact about our data layer, and the reason we did
 **not** put the registry in a local SQLite file (that would be the one thing that disappears on restart).
 
 > **Defense in one line:** *"Durable state is 100% in Qdrant Cloud; the compute host holds nothing it
@@ -141,7 +141,7 @@ keyword index to build, host, or keep in sync** — and it's all persistent.
 
 ## 8. Backup / rebuild
 
-Because Qdrant Cloud is the source of truth, "backup" = Qdrant snapshots. The Space can be rebuilt from
+Because Qdrant Cloud is the source of truth, "backup" = Qdrant snapshots. The app can be redeployed from
 scratch at any time and reconnects to the same Qdrant collections — nothing to migrate.
 
 **The free cluster itself is not forever (review fix):** Qdrant suspends an unused free cluster after

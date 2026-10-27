@@ -36,6 +36,12 @@ def render_evaluation_page() -> None:
     _render_weight_tuning(data.get("tuned_weights_fixed"), data.get("tuned_weights_recursive"))
     st.divider()
     _render_behavioral_eval(data.get("behavioral_eval") or data.get("ask_eval"))
+    if data.get("guardrails"):
+        st.divider()
+        _render_guardrails(data["guardrails"])
+    if data.get("benchmark"):
+        st.divider()
+        _render_benchmark(data["benchmark"])
     st.divider()
     _render_live_metrics(client)
 
@@ -211,3 +217,43 @@ def _render_live_metrics(client) -> None:
     cache = [{"cache": ns, **v} for ns, v in (m.get("cache") or {}).items()]
     if cache:
         st.dataframe(pd.DataFrame(cache), hide_index=True, width="stretch")
+
+
+def _render_guardrails(g: dict[str, Any]) -> None:
+    """`results/guardrails.json` (evaluation/red_team.py)."""
+    st.subheader("4. Guardrails red team (prompt injection, jailbreaks, harmful requests)")
+    summary = g.get("summary") or {}
+    off, on = summary.get("guard_off") or {}, summary.get("guard_on") or {}
+    fp = g.get("false_positives") or {}
+    cols = st.columns(3)
+    cols[0].metric("Attacks succeeded, guards off", f"{off.get('succeeded', 0)} / {off.get('attacks', 0)}")
+    cols[1].metric("Attacks succeeded, guards on", f"{on.get('succeeded', 0)} / {on.get('attacks', 0)}")
+    cols[2].metric("Benign questions blocked", f"{len(fp.get('questions_blocked') or [])} / {fp.get('questions_checked', 0)}")
+    rows = []
+    for cat in sorted(set(off.get("by_category", {})) | set(on.get("by_category", {}))):
+        o, n = off.get("by_category", {}).get(cat, {}), on.get("by_category", {}).get(cat, {})
+        rows.append({"category": cat, "attacks": n.get("attacks", o.get("attacks", 0)),
+                     "succeeded (off)": o.get("succeeded", 0), "succeeded (on)": n.get("succeeded", 0),
+                     "stopped by input guard (on)": n.get("input guard", 0),
+                     "stopped by output guard (on)": n.get("output guard", 0)})  # fmt: skip
+    if rows:
+        st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
+    st.caption(f"Policy classifier `{(g.get('guard_models') or {}).get('policy_classifier')}`; false positives also "
+               f"checked on {fp.get('answers_checked', 0)} stored answers "
+               f"({len(fp.get('answers_blocked') or [])} blocked). Details: EVALUATION-REPORT.md §8.")  # fmt: skip
+
+
+def _render_benchmark(b: dict[str, Any]) -> None:
+    """`results/benchmark.json` (evaluation/benchmark.py)."""
+    index = b.get("index") or {}
+    st.subheader(f"5. Search latency on the full index ({index.get('chunks', 0):,} chunks)")
+    rows = []
+    for run in b.get("search") or []:
+        for stage, v in (run.get("ms") or {}).items():
+            rows.append({"setup": f"{run['backend']} ({run['device']})", "stage": stage, "p50 ms": v.get("p50"),
+                         "p95 ms": v.get("p95")})  # fmt: skip
+    if rows:
+        st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
+    emb = " · ".join(f"{e['backend']}: {e['chunks_per_s']} chunks/s" for e in b.get("embedding") or [])
+    if emb:
+        st.caption(f"Embedding throughput (dense + BM25, the main cost of ingesting an upload): {emb}")

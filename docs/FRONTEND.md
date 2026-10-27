@@ -24,7 +24,9 @@ and deployed.
 ## 2. Page 1 — Documents (`ui/pages/documents.py`)
 
 - **Upload:** drag-and-drop one or more files (PDF / HTML / Markdown / TXT — `BACKEND.md` §3.1).
-  Each file reports `created`, `already indexed` (exact `sha256` duplicate), or the loader's error.
+  Each file reports `created`, `already indexed` (exact `sha256` duplicate), or the loader's error. A
+  created file that is a near-copy of an existing document also gets a warning naming that document and
+  the share of its wording that matches; it is indexed anyway (`BACKEND.md` §3.5).
   The page states the deployed strategy (**`fixed`** — 256-token windows, 32-token overlap) and points to
   the Evaluation page for the 50k fixed-vs-recursive comparison (uploading into a non-deployed strategy
   would put chunks where nobody searches).
@@ -89,6 +91,9 @@ and deployed.
 - **3. End-to-end `/ask` behavioral evaluation:** renders summary metrics, per-type breakdown (simple,
   multi-hop, unanswerable, contradictory), and the failure-mode table once Phase 4 writes
   `results/behavioral_eval.json`.
+- **Live service metrics (`GET /metrics`):** uptime, questions answered, answer time p50/p95, guardrail
+  blocks, outcomes and LLM calls per provider, request latency per route and cache hit rates, for the
+  running backend since it started (`BACKEND.md` §9).
 
 ---
 

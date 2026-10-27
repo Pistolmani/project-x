@@ -166,6 +166,15 @@ class FakeClient:
 
     def eval_results(self) -> dict[str, Any]:
         return {
+            "guardrails": {
+                "guard_models": {"policy_classifier": "openai/gpt-oss-safeguard-20b"},
+                "summary": {"guard_off": {"attacks": 30, "succeeded": 4, "by_category": {"jailbreak": {"attacks": 6, "succeeded": 2}}},
+                            "guard_on": {"attacks": 30, "succeeded": 0, "by_category": {"jailbreak": {"attacks": 6, "succeeded": 0, "input guard": 6}}}},
+                "false_positives": {"questions_checked": 70, "questions_blocked": [], "answers_checked": 40, "answers_blocked": []},
+            },
+            "benchmark": {"index": {"documents": 50015, "chunks": 300074},
+                          "search": [{"backend": "onnx", "device": "cpu", "ms": {"total": {"p50": 900.0, "p95": 1500.0}}}],
+                          "embedding": [{"backend": "onnx", "chunks_per_s": 9.5}]},
             "index_stats": {
                 "documents": 50000,
                 "strategies": {
@@ -287,6 +296,8 @@ def test_evaluation_page_renders_comparisons_and_tables():
     assert any("300,059" in m.value for m in at.metric)
     # live metrics from GET /metrics
     assert any(m.label == "Guardrail blocks" and m.value == "1" for m in at.metric)
+    assert any(m.label == "Attacks succeeded, guards on" and m.value == "0 / 30" for m in at.metric)
+    assert any("Search latency on the full index (300,074 chunks)" in h.value for h in at.subheader)
     assert any("Answer time p50 / p95" == m.label and m.value == "21 s / 48 s" for m in at.metric)
 
 

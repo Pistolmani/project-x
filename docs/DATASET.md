@@ -70,8 +70,9 @@ Order matters, because removing an article for one test case can break another (
 
 ## 4. Ingestion pipeline (run OFFLINE — review fix)
 
-Embedding 50k long articles on the Space's CPU would be far too slow, so bulk ingestion runs **locally or
-on a free Colab GPU**, then pushes vectors to Qdrant Cloud; the Space only queries. See `SETUP.md`.
+Embedding 50k long articles on the free host's CPU would be far too slow, so bulk ingestion runs **locally
+on a GPU**, then pushes vectors to Qdrant Cloud; the deployed app only queries (and indexes the occasional
+upload). See `SETUP.md`.
 
 1. **Load** article bodies from `wikimedia/wikipedia 20231101.en` for the selected titles.
 2. **Swap** the whole lead section for the HotpotQA 2017 paragraph (§1).
@@ -88,6 +89,8 @@ on a free Colab GPU**, then pushes vectors to Qdrant Cloud; the Space only queri
 Measured on a 2k-article sample (Phase 1), projected ×25 to 50k:
 - Article length: mean **1,473** tokens, median 680, p95 6,015, max 20,586 → **~74M tokens** at 50k.
 - Chunks: **~490k recursive**, **~350k fixed**.
+- **Actual at 50k** (`results/index_stats.json`): mean **1,257** tokens, median 587, p95 4,773, max 56,281,
+  **62.8M tokens**; **433,425 recursive** and **300,059 fixed** chunks. The sample overestimated both.
 - Indexing speed on an RTX 3060 Laptop GPU: ~40 s per 2k articles per strategy → **~17 min per
   strategy** at 50k.
 - Both strategies together (~3.9 GB est.) don't reliably fit Qdrant Cloud's 4 GB disk, so: **the chunking
