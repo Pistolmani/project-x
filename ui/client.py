@@ -58,6 +58,9 @@ class BackendClient:
     def delete_document(self, doc_id: str) -> None:
         self._request("DELETE", f"/documents/{doc_id}")
 
+    def metrics(self) -> dict[str, Any]:
+        return self._request("GET", "/metrics")
+
     def search(self, query: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         return self._request("POST", "/search", json={"query": query, "params": params or {}})
 

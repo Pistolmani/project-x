@@ -157,6 +157,13 @@ class FakeClient:
             }
         yield {"type": "answer", "answer": ans}
 
+    def metrics(self) -> dict[str, Any]:
+        return {"uptime_s": 600, "requests": {"POST /ask/stream": {"count": 3, "errors_5xx": 0, "p50_ms": 9.0, "p95_ms": 12.0}},
+                "answers": {"total": 3, "by_status": {"answered": 2, "blocked": 1}, "p50_ms": 21000.0, "p95_ms": 48000.0,
+                            "llm_calls": {"gemini/flash-lite": 7}, "tokens": {"input": 900, "output": 80}},
+                "guard": {"blocked": {"input:injection": 1}, "classifier_fallbacks": 0},
+                "cache": {"search": {"hits": 1, "misses": 3, "hit_rate": 0.25}}}  # fmt: skip
+
     def eval_results(self) -> dict[str, Any]:
         return {
             "index_stats": {
@@ -278,6 +285,9 @@ def test_evaluation_page_renders_comparisons_and_tables():
     assert not at.exception
     assert len(at.dataframe) >= 2
     assert any("300,059" in m.value for m in at.metric)
+    # live metrics from GET /metrics
+    assert any(m.label == "Guardrail blocks" and m.value == "1" for m in at.metric)
+    assert any("Answer time p50 / p95" == m.label and m.value == "21 s / 48 s" for m in at.metric)
 
 
 def test_ask_page_shows_an_error_when_the_stream_ends_without_an_answer():

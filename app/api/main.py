@@ -24,6 +24,7 @@ from app.api.schemas import (AskRequest, DocumentList, IngestResponse, SearchHit
                              SearchResponse)  # fmt: skip
 from app.ingestion.loaders import LoaderError
 from app.ingestion.service import DocumentNotFound
+from app.metrics import Metrics
 
 log = logging.getLogger(__name__)
 
@@ -84,6 +85,20 @@ def create_app(engine=None, ingestion=None) -> FastAPI:
         yield
 
     app = FastAPI(title="Investigation Engine", version="0.2", lifespan=lifespan)
+    app.state.metrics = Metrics()
+
+    @app.middleware("http")
+    async def _measure(request: Request, call_next):
+        start, status = time.perf_counter(), 500
+        try:
+            response = await call_next(request)
+            status = response.status_code
+            return response
+        finally:
+            # The route template, not the raw path, so /documents/{doc_id} is one entry, not one per id.
+            route = request.scope.get("route")
+            label = f"{request.method} {getattr(route, 'path', 'unmatched')}"
+            request.app.state.metrics.record_request(label, status, round((time.perf_counter() - start) * 1000, 1))
 
     def error(status: int, code: str, message: str) -> JSONResponse:
         return JSONResponse(status_code=status, content={"error": {"code": code, "message": message}})
@@ -130,6 +145,12 @@ def create_app(engine=None, ingestion=None) -> FastAPI:
                 "llm_providers": [p.name for p in getattr(engine.llm.llm, "providers", [])],
                 "cache": dict(engine.cache.stats)}  # fmt: skip
 
+    @app.get("/metrics")
+    def metrics(request: Request):
+        """Aggregate counters since the process started: requests and latency per route, answer outcomes,
+        LLM calls per provider, tokens, guardrail blocks, cache hit rates."""
+        return request.app.state.metrics.snapshot(request.app.state.engine.cache.stats)
+
     @app.post("/search", response_model=SearchResponse)
     def search(body: SearchRequest, request: Request):
         result = request.app.state.engine.searcher.search(body.query, body.params)
@@ -144,9 +165,11 @@ def create_app(engine=None, ingestion=None) -> FastAPI:
         request.app.state.ask_limit.take()
         _force_guard(request, body)
         answer = request.app.state.engine.agent.ask(body.question, body.params)
+        content = _jsonable(asdict(answer))
+        _record_answer(request.app, content)
         # An LLM or store outage is a 503 that still carries the structured answer (status "error"),
         # never a fabricated reply.
-        return JSONResponse(status_code=503 if answer.status == "error" else 200, content=_jsonable(asdict(answer)))
+        return JSONResponse(status_code=503 if answer.status == "error" else 200, content=content)
 
     @app.post("/ask/stream")
     def ask_stream(body: AskRequest, request: Request):
@@ -158,8 +181,9 @@ def create_app(engine=None, ingestion=None) -> FastAPI:
 
         def run():
             try:
-                answer = agent.ask(body.question, body.params, on_event=events.put)
-                events.put({"type": "answer", "answer": _jsonable(asdict(answer))})
+                answer = _jsonable(asdict(agent.ask(body.question, body.params, on_event=events.put)))
+                _record_answer(request.app, answer)
+                events.put({"type": "answer", "answer": answer})
             except Exception as e:  # anything ask() does not turn into status "error" itself
                 log.exception("ask/stream failed")
                 events.put({"type": "error", "code": "internal_error",
@@ -244,6 +268,19 @@ def _read(request: Request, file: UploadFile) -> bytes:
     if len(data) > limit * 1024 * 1024:
         raise UploadTooLarge(limit)
     return data
+
+
+def _record_answer(app: FastAPI, answer: dict) -> None:
+    """Count the answer in /metrics and write one structured log line (no question text, only its size)."""
+    app.state.metrics.record_answer(answer)
+    providers = sorted({f"{s.get('provider')}/{s.get('model')}" for s in answer.get("trace") or [] if s.get("step") == "llm"})
+    guard = (answer.get("gates") or {}).get("guard") or {}
+    log.info("ask %s", json.dumps({
+        "status": answer.get("status"), "ms": answer.get("ms"), "question_chars": len(answer.get("question", "")),
+        "llm_calls": (answer.get("usage") or {}).get("llm_calls"), "providers": providers,
+        "citations": len(answer.get("citations") or []),
+        "guard_blocked": [f"{k}:{v.get('category')}" for k, v in guard.items() if not v.get("passed")],
+        "error": answer.get("error")}))  # fmt: skip
 
 
 def _force_guard(request: Request, body) -> None:

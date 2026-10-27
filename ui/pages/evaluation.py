@@ -36,6 +36,8 @@ def render_evaluation_page() -> None:
     _render_weight_tuning(data.get("tuned_weights_fixed"), data.get("tuned_weights_recursive"))
     st.divider()
     _render_behavioral_eval(data.get("behavioral_eval") or data.get("ask_eval"))
+    st.divider()
+    _render_live_metrics(client)
 
 
 def _render_retrieval_comparison(comp: dict[str, Any] | None, stats: dict[str, Any] | None) -> None:
@@ -183,3 +185,29 @@ def _render_behavioral_eval(beh: dict[str, Any] | None) -> None:
     if isinstance(failures, list) and failures:
         st.markdown("**Failure-mode table**")
         st.dataframe(pd.DataFrame(failures), width="stretch", hide_index=True)
+
+
+def _render_live_metrics(client) -> None:
+    """`GET /metrics`: what this running backend has served since it started (resets when the app sleeps)."""
+    st.subheader("Live service metrics (since the backend started)")
+    try:
+        m = client.metrics()
+    except BackendError as e:
+        st.info(f"Metrics unavailable: {e.message}")
+        return
+    answers, guard = m.get("answers") or {}, m.get("guard") or {}
+    cols = st.columns(4)
+    cols[0].metric("Uptime", f"{(m.get('uptime_s') or 0) // 60} min")
+    cols[1].metric("Questions answered", answers.get("total", 0))
+    p50, p95 = answers.get("p50_ms"), answers.get("p95_ms")
+    cols[2].metric("Answer time p50 / p95", f"{p50 / 1000:.0f} s / {p95 / 1000:.0f} s" if p50 is not None else "—")
+    cols[3].metric("Guardrail blocks", sum((guard.get("blocked") or {}).values()))
+    if answers.get("by_status"):
+        st.caption("Outcomes: " + " · ".join(f"{k} {v}" for k, v in sorted(answers["by_status"].items()))
+                   + " · LLM calls: " + (" · ".join(f"`{k}` {v}" for k, v in (answers.get("llm_calls") or {}).items()) or "none"))  # fmt: skip
+    routes = [{"route": r, **v} for r, v in (m.get("requests") or {}).items()]
+    if routes:
+        st.dataframe(pd.DataFrame(routes), hide_index=True, width="stretch")
+    cache = [{"cache": ns, **v} for ns, v in (m.get("cache") or {}).items()]
+    if cache:
+        st.dataframe(pd.DataFrame(cache), hide_index=True, width="stretch")

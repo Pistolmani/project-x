@@ -343,6 +343,13 @@ calls**, which can exhaust Gemini's free tier. Mitigations, by design:
 | `POST` | `/ask/stream` | SSE stream emitting live progress events (`searching`, `found`, `verifying`, …) then the final `/ask` answer. |
 | `GET`  | `/eval/results` | Serves tracked JSON evaluation artifacts from `results/` for the UI dashboard. |
 | `GET`  | `/health` | Liveness + model/DB readiness. |
+| `GET`  | `/metrics` | Aggregate counters since the process started (`app/metrics.py`): requests, 5xx and p50/p95 latency per route template; answer outcomes and p50/p95 time; LLM calls per provider/model (fallbacks show up here); tokens; guardrail blocks by category and classifier fallbacks; cache hit rate per namespace. Shown live on the UI's Evaluation page. |
+
+**Observability.** Three levels: every answer carries its own `trace` (each LLM call and tool call with
+provider, model and milliseconds), `gates` (why each check passed or failed) and `usage` (calls, tokens);
+every `/ask` writes one structured JSON log line (status, time, providers, citations, guard blocks; the
+question's length but not its text); and `/metrics` aggregates all of it. The metrics are in memory, so
+they reset when the free host restarts the app; that is acceptable for a demo and documented in `SETUP.md`.
 
 Config knobs (chunking strategy, RRF weights, top-k, which rerank stages are on, relevance floor, agentic
 on/off) are request parameters **and** have env defaults, so the eval can sweep configurations.
