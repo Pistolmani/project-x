@@ -103,6 +103,10 @@ Cloud is free, deploys straight from the GitHub repo, and redeploys on every pus
    behind a "Starting the backend" spinner. Later restarts reuse the downloaded models until the container is
    recycled.
 
+**After pushing backend changes, reboot the app** (share.streamlit.io → ⋮ → Reboot). A push updates the
+files and reruns the UI, but the backend thread is started once per process and keeps the old code until
+the process restarts.
+
 The deployed app runs on Python 3.14 (Streamlit Cloud's default); the pinned requirements install and run
 there. Locally the project uses 3.11.
 

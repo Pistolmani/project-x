@@ -15,6 +15,12 @@ def percentile(values, q: float) -> float | None:
     return ordered[min(len(ordered) - 1, max(0, math.ceil(q / 100 * len(ordered)) - 1))]
 
 
+def llm_label(step: dict[str, Any]) -> str:
+    """'groq/openai/gpt-oss-120b'; Gemini provider names already end in the model."""
+    provider, model = str(step.get("provider")), str(step.get("model"))
+    return provider if provider.endswith(model) else f"{provider}/{model}"
+
+
 class Metrics:
     def __init__(self, window: int = 500, clock=time.monotonic):
         self.clock = clock
@@ -44,7 +50,7 @@ class Metrics:
             self.answer_ms.append(answer.get("ms", 0.0))
             for step in answer.get("trace") or []:
                 if step.get("step") == "llm":
-                    self.llm_calls[f"{step.get('provider')}/{step.get('model')}"] += 1
+                    self.llm_calls[llm_label(step)] += 1
             usage = answer.get("usage") or {}
             self.tokens["input"] += usage.get("input_tokens", 0)
             self.tokens["output"] += usage.get("output_tokens", 0)

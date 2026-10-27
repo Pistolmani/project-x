@@ -13,7 +13,7 @@ def test_percentile_is_nearest_rank():
 def test_answers_count_outcomes_providers_tokens_and_guard_blocks():
     m = Metrics(clock=iter([0.0, 90.0]).__next__)
     m.record_answer({"status": "answered", "ms": 2000.0, "usage": {"input_tokens": 100, "output_tokens": 10},
-                     "trace": [{"step": "llm", "provider": "gemini", "model": "lite"}, {"step": "tool"},
+                     "trace": [{"step": "llm", "provider": "gemini/lite", "model": "lite"}, {"step": "tool"},
                                {"step": "llm", "provider": "groq", "model": "oss"}],
                      "gates": {"guard": {"input": {"passed": True}, "output": {"passed": True, "error": "rate limited"}}}})
     m.record_answer({"status": "blocked", "ms": 300.0, "gates": {"guard": {"input": {"passed": False, "category": "injection"}}}})

@@ -24,7 +24,7 @@ from app.api.schemas import (AskRequest, DocumentList, IngestResponse, SearchHit
                              SearchResponse)
 from app.ingestion.loaders import LoaderError
 from app.ingestion.service import DocumentNotFound
-from app.metrics import Metrics
+from app.metrics import Metrics, llm_label
 
 log = logging.getLogger(__name__)
 
@@ -271,7 +271,7 @@ def _read(request: Request, file: UploadFile) -> bytes:
 def _record_answer(app: FastAPI, answer: dict) -> None:
     """Count the answer in /metrics and log one JSON line (without the question text)."""
     app.state.metrics.record_answer(answer)
-    providers = sorted({f"{s.get('provider')}/{s.get('model')}" for s in answer.get("trace") or [] if s.get("step") == "llm"})
+    providers = sorted({llm_label(s) for s in answer.get("trace") or [] if s.get("step") == "llm"})
     guard = (answer.get("gates") or {}).get("guard") or {}
     log.info("ask %s", json.dumps({
         "status": answer.get("status"), "ms": answer.get("ms"), "question_chars": len(answer.get("question", "")),
