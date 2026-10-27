@@ -9,6 +9,8 @@ when the documents don't contain the answer, instead of inventing one.
 **Live demo:** https://project-x-1.streamlit.app. It searches 50,000 Wikipedia articles (read-only) and
 lets you upload, update and delete your own PDF, HTML, Markdown or text files.
 
+**New here?** Start with the 2-page [Reviewer Guide](./REVIEWER-GUIDE.pdf) ([also as Markdown](./docs/REVIEWER-GUIDE.md)).
+
 ## Try these
 
 | Question | What it shows |
