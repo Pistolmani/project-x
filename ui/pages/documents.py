@@ -61,6 +61,12 @@ def _render_upload_section(client: BackendClient) -> None:
                 f"**{item['name']}** — created *{item['title']}* (`{item['doc_id']}`, v{item['version']}, "
                 f"{n_chunks} chunks)."
             )
+            if near := item.get("near_duplicate_of"):
+                st.warning(
+                    f"Near-duplicate: {near['similarity']:.0%} of its wording matches *{near['title']}* "
+                    f"(`{near['doc_id']}`). It was indexed anyway, so differences between the two can be "
+                    "found and flagged as conflicts."
+                )
 
 
 def _render_uploads_tab(client: BackendClient) -> None:

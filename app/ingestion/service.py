@@ -1,6 +1,11 @@
 """Add / update / delete documents at runtime (BACKEND.md §3.5–§3.6). Behind POST/PUT/DELETE /documents.
 
-    load (format-specific) -> render -> exact dedup by content hash -> chunk -> embed -> upsert
+    load (format-specific) -> render -> exact dedup by content hash -> near-duplicate check -> chunk
+         -> embed -> upsert
+
+Exact duplicates are not indexed again. Near-duplicates (an edited copy) are indexed, because a document
+that changes one fact is exactly what conflict detection needs to see, but the response names the
+document it resembles.
 
 Update is crash-safe by ordering: the new version's chunks are written first (they have their own point
 IDs), then the registry, then the old version's chunks are deleted. A crash in between leaves the old
@@ -12,12 +17,17 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+from qdrant_client import models
+
 from app.cache import Cache
 from app.ingestion.chunking import ChunkingStrategy, chunk
 from app.ingestion.document import render
 from app.ingestion.loaders import LoadedDocument, load
-from app.ingestion.text import content_hash
+from app.ingestion.text import containment, content_hash, shingles
 from app.store.qdrant_store import NUM_CHUNKS_PREFIX, ChunkPoint, QdrantStore
+
+NEAR_DUPLICATE = 0.8  # share of the new document's 5-word shingles found in an existing document
+NEAR_DUPLICATE_CANDIDATES = 5  # most similar existing documents compared in full
 
 
 class DocumentNotFound(KeyError):
@@ -32,6 +42,7 @@ class IngestResult:
     title: str
     num_chunks: dict[str, int]
     duplicate_of: str | None = None
+    near_duplicate_of: dict | None = None  # {"doc_id", "title", "similarity"} of an existing near-copy
 
 
 class IngestionService:
@@ -56,12 +67,34 @@ class IngestionService:
         if existing is not None:
             return IngestResult(existing["doc_id"], "duplicate", existing.get("version", 1), existing["title"],
                                 _counts(existing), duplicate_of=existing["doc_id"])  # fmt: skip
+        near = self.near_duplicate(text)
         doc_id = str(uuid.uuid4())
         counts = self._index(doc_id, doc, version=1)
         now = _now()
-        self.store.upsert_documents([_record(doc_id, doc, sha, 1, counts, created=now, updated=now) | {"tag": tag}])
+        record = _record(doc_id, doc, sha, 1, counts, created=now, updated=now) | {"tag": tag}
+        if near:
+            record["near_duplicate_of"] = near["doc_id"]
+        self.store.upsert_documents([record])
         self._changed()
-        return IngestResult(doc_id, "created", 1, doc.title, counts)
+        return IngestResult(doc_id, "created", 1, doc.title, counts, near_duplicate_of=near)
+
+    def near_duplicate(self, text: str) -> dict | None:
+        """The most similar existing document if it is a near-copy of `text`, else None. One embedding of
+        the opening finds candidates; each is then compared in full by shingle overlap."""
+        strategy = self.strategies[0].value
+        vector = self.dense.embed_documents([text[:2000]])[0]
+        same_strategy = models.Filter(must=[models.FieldCondition(key="chunking_strategy",
+                                                                  match=models.MatchValue(value=strategy))])  # fmt: skip
+        hits = self.store.search_lists(vector, None, same_strategy, limit=4 * NEAR_DUPLICATE_CANDIDATES).get("dense", [])
+        candidates = list(dict.fromkeys(h.payload["doc_id"] for h in hits))[:NEAR_DUPLICATE_CANDIDATES]
+        mine, best = shingles(text), None
+        for doc_id in candidates:
+            theirs = set().union(*(shingles(r.payload["text"]) for r in self.store.get_chunks(doc_id, strategy)))
+            score = containment(mine, theirs)
+            if score >= NEAR_DUPLICATE and (best is None or score > best["similarity"]):
+                title = next((h.payload.get("title", "") for h in hits if h.payload["doc_id"] == doc_id), "")
+                best = {"doc_id": doc_id, "title": title, "similarity": round(score, 3)}
+        return best
 
     def update(self, doc_id: str, data: bytes, filename: str) -> IngestResult:
         current = self.store.get_document(doc_id)

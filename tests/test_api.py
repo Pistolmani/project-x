@@ -225,3 +225,19 @@ def test_demo_mode_keeps_the_guardrails_on():
         assert body["status"] == "blocked" and body["gates"]["guard"]["input"]["category"] == "injection"
     with make_client() as c:  # locally the eval may switch them off
         assert c.post("/ask", json=attack).json()["status"] != "blocked"
+
+
+ARTICLE = (b"# Delta Radio\n\nDelta Radio is a radio station on the river delta. It opened in 2001 and broadcasts music, "
+           b"news and weather for the towns along the river. The station moved to a new building in 2010 and "
+           b"added a second frequency for the coastal towns in 2015, when the delta bridge was finished.\n")  # fmt: skip
+
+
+def test_an_edited_copy_is_indexed_but_named_as_a_near_duplicate(client):
+    original = client.post("/documents", files={"file": ("delta.md", ARTICLE)}).json()
+    assert original["near_duplicate_of"] is None
+    edited = client.post("/documents", files={"file": ("delta2.md", ARTICLE.replace(b"2001", b"2003"))}).json()
+    assert edited["status"] == "created"  # indexed: the changed fact must stay findable as a conflict
+    near = edited["near_duplicate_of"]
+    assert near["doc_id"] == original["doc_id"] and 0.8 <= near["similarity"] < 1
+    other = client.post("/documents", files={"file": ("jaws.md", JAWS)}).json()
+    assert other["near_duplicate_of"] is None

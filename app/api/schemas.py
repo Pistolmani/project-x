@@ -43,6 +43,7 @@ class IngestResponse(BaseModel):
     title: str
     num_chunks: dict[str, int]
     duplicate_of: str | None = None
+    near_duplicate_of: dict[str, Any] | None = None
 
 
 class DocumentList(BaseModel):

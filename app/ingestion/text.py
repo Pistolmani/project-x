@@ -17,6 +17,18 @@ def content_hash(text: str) -> str:
     return hashlib.sha256(collapsed.encode("utf-8")).hexdigest()
 
 
+def shingles(text: str, n: int = 5) -> set[tuple[str, ...]]:
+    """The set of n-word sequences in `text` (lowercased words): near-duplicate texts share most of them."""
+    words = re.findall(r"\w+", text.lower())
+    return {tuple(words[i : i + n]) for i in range(max(len(words) - n + 1, 1))} if words else set()
+
+
+def containment(new: set, existing: set) -> float:
+    """Share of `new`'s shingles that also occur in `existing`: 1.0 for an exact copy or an excerpt,
+    ~0.9 for a copy with a few words changed. Unlike Jaccard it is not diluted when `existing` is longer."""
+    return len(new & existing) / len(new) if new else 0.0
+
+
 # A sentence ends at . ! or ? (plus any closing quotes/brackets), followed by whitespace and then
 # something that looks like a sentence start. Deliberately simple: abbreviations such as "U.S. Army"
 # can cause an extra split, which only makes a recursive chunk boundary slightly early.

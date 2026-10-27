@@ -83,10 +83,22 @@ of them — the chunk-level gold-sentence metric can't separate the strategies o
 - **Sparse:** a BM25-style sparse vector per chunk (via FastEmbed) — the keyword half of hybrid search (D7).
 
 ### 3.5 Deduplication
-Before insert, compute the content **sha256**; if an identical document already exists, skip (**exact dedup
-only**). **We deliberately do NOT collapse near-duplicates** — the evaluation's injected contradictory
-documents are *near*-duplicates of real ones, and collapsing them would make conflict detection impossible
-by design (a bug caught in review). Near-identical-but-not-identical chunks are kept as distinct points.
+
+Three levels, none of which may hide a conflict: a planted contradictory document is a *near*-copy of a
+real one by design, and collapsing it would make conflict detection impossible.
+
+| Level | Where | Rule | Effect |
+|---|---|---|---|
+| **Exact document** | upload (`IngestionService.add`) | sha256 of the text with whitespace collapsed | not indexed again; the response names the existing document (`duplicate_of`) |
+| **Near-duplicate document** | upload (`near_duplicate`) | one embedding of the opening finds the 5 most similar documents; each is compared in full by **containment**: the share of the new document's 5-word shingles found in it. ≥ 0.8 = near-copy | **indexed anyway**; the response and the UI name the document it resembles (`near_duplicate_of`) |
+| **Identical passage** | search (`drop_duplicate_text`, after fusion) | same chunk content hash | only the best-ranked copy is kept, so duplicates don't take slots from other evidence |
+
+Containment, not Jaccard: an excerpt of a long article should count as a copy, and Jaccard is diluted by
+the longer document's extra text. Measured read-only on the cloud index (6 random articles): copies with
+every 40th word changed score 0.87–0.91, half-article excerpts 0.97–1.0, unrelated text has no candidate.
+The planted conflict fact sheets score 0.44–0.85 against their source articles, so some are flagged; they
+are indexed either way. The passage-level step fired on **0 of 400** tuning and held-out questions, so the
+evaluated retrieval numbers are unchanged.
 
 ### 3.6 Add / update / delete
 - **Add:** new `doc_id`, chunk, embed, upsert; write `documents` row.
