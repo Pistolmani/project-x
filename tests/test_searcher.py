@@ -119,3 +119,22 @@ def test_cap_per_doc_keeps_evidence_from_several_articles():
     assert [c.doc_id for c in cap_per_doc(cands, 2, 10)] == ["a", "a", "b", "b", "c"]
     assert [c.doc_id for c in cap_per_doc(cands, 1, 2)] == ["a", "b"]
     assert len(cap_per_doc(cands, None, 4)) == 4
+
+
+def test_identical_text_from_two_articles_is_kept_once():
+    from app.retrieval.searcher import drop_duplicate_text
+
+    def cand(pid, doc, text):
+        return Candidate(pid, {"doc_id": doc, "text": text})
+
+    ranked = [cand("a", "wiki", "The station opened in 2001."), cand("b", "upload", "The  station opened in 2001.\n"),
+              cand("c", "upload", "The station opened in 2002.")]  # fmt: skip
+    # whitespace-only differences are duplicates; a changed fact is not (conflict detection needs it)
+    assert [c.point_id for c in drop_duplicate_text(ranked)] == ["a", "c"]
+
+
+def test_search_reports_how_many_duplicates_it_dropped(store):
+    result = Searcher(store, FakeDense(), FakeSparse()).search("radio station", SearchParams(strategy="fixed"))
+    assert result.stage_sizes["duplicates_dropped"] == 0
+    off = Searcher(store, FakeDense(), FakeSparse()).search("radio station", SearchParams(strategy="fixed", dedup_text=False))
+    assert "duplicates_dropped" not in off.stage_sizes

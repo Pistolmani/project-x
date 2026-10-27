@@ -6,6 +6,8 @@ from streamlit.testing.v1 import AppTest
 
 from ui.client import BackendError
 
+TIMEOUT_S = 30  # Streamlit's default 3 s flakes on a loaded machine or a CI runner
+
 
 class FakeClient:
     base_url = "http://fake-backend:8000"
@@ -192,7 +194,7 @@ def _ask_app(client: FakeClient) -> AppTest:
 
         render_ask_page()
 
-    at = AppTest.from_function(script)
+    at = AppTest.from_function(script, default_timeout=TIMEOUT_S)
     at.session_state["_client"] = client
     return at.run()
 
@@ -245,7 +247,7 @@ def test_documents_page_lists_uploads_views_chunks_and_confirms_delete():
 
         render_documents_page()
 
-    at = AppTest.from_function(script)
+    at = AppTest.from_function(script, default_timeout=TIMEOUT_S)
     at.session_state["_client"] = client
     at.run()
     assert not at.exception
@@ -270,7 +272,7 @@ def test_evaluation_page_renders_comparisons_and_tables():
 
         render_evaluation_page()
 
-    at = AppTest.from_function(script)
+    at = AppTest.from_function(script, default_timeout=TIMEOUT_S)
     at.session_state["_client"] = client
     at.run()
     assert not at.exception
@@ -292,7 +294,7 @@ def test_evaluation_findings_are_computed_from_the_loaded_results():
 
         render_evaluation_page()
 
-    at = AppTest.from_function(script)
+    at = AppTest.from_function(script, default_timeout=TIMEOUT_S)
     at.session_state["_client"] = FakeClient()
     at.run()
     captions = " ".join(c.value for c in at.caption)

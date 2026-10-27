@@ -1,0 +1,19 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      # The slim runtime only (no torch): the same packages the live demo runs on.
+      - run: pip install -r requirements.txt pytest
+      # Unit tests use fakes for Qdrant, models and LLMs; "integration" tests need model downloads or keys.
+      - run: python -m pytest -m "not integration" -q

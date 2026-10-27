@@ -1,7 +1,7 @@
 """The retrieval pipeline behind `search_documents()` and `POST /search`.
 
-    query -> dense + sparse lists (Qdrant) -> weighted RRF -> feature re-ranker -> cross-encoder
-          -> per-document cap -> top-k
+    query -> dense + sparse lists (Qdrant) -> weighted RRF -> drop duplicate text -> feature re-ranker
+          -> cross-encoder -> per-document cap -> top-k
 
 Every stage can be switched off through SearchParams, which is how the evaluation compares
 configurations (hybrid vs dense-only, with/without each re-ranker) on the same code path.
@@ -17,6 +17,7 @@ from qdrant_client import models
 
 from app.cache import Cache, make_key
 from app.ingestion.chunking import ChunkingStrategy
+from app.ingestion.text import content_hash
 from app.retrieval.candidate import Candidate
 from app.retrieval.features import FeatureReranker
 from app.retrieval.fusion import weighted_rrf
@@ -37,6 +38,7 @@ class SearchParams(BaseModel):
     top_n: int = Field(20, gt=0)  # how many survivors the cross-encoder scores
     top_k: int = Field(8, gt=0)  # returned to the caller / the LLM
     max_per_doc: int | None = Field(2, gt=0)  # None = no cap
+    dedup_text: bool = True  # keep one of chunks with identical text (e.g. a passage copied into an upload)
     doc_ids: list[str] | None = None  # optional scope filter
 
 
@@ -92,6 +94,9 @@ class Searcher:
             candidates = self._fuse(lists, params)
         sizes = {"dense": len(lists.get(DENSE, [])), "sparse": len(lists.get(SPARSE, [])),
                  "fused": len(candidates)}  # fmt: skip
+        if params.dedup_text:
+            candidates = drop_duplicate_text(candidates)
+            sizes["duplicates_dropped"] = sizes["fused"] - len(candidates)
 
         if params.feature_rerank:
             with _timed(timings, "feature_rerank"):
@@ -138,6 +143,21 @@ class Searcher:
             c.rrf_score, c.rrf_contributions = score, contributions
             ordered.append(c)
         return ordered
+
+
+def drop_duplicate_text(candidates: list[Candidate]) -> list[Candidate]:
+    """Keep the best-ranked of chunks whose text is identical (same content hash, so whitespace-only
+    differences count as identical), e.g. a passage an upload copied from a corpus article. Identical
+    text cannot disagree, so conflict detection loses nothing, and the freed slots go to other evidence.
+    Near-duplicates are kept: a planted conflicting version differs in exactly the fact that matters."""
+    seen: set[str] = set()
+    kept = []
+    for c in candidates:
+        digest = c.payload.get("sha256") or content_hash(c.text)
+        if digest not in seen:
+            seen.add(digest)
+            kept.append(c)
+    return kept
 
 
 def cap_per_doc(candidates: list[Candidate], max_per_doc: int | None, top_k: int) -> list[Candidate]:
