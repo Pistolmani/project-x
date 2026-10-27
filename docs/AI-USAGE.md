@@ -74,4 +74,4 @@ their work. It was kept during the build, not reconstructed at the end.
 | 10-24 | 6. UI | Streamlit pages, `/ask/stream`, single-shot mode (Cursor agent) | Phase 3 plan |
 | 10-24 | 7. Evaluation | Review fixes; 55-question set, judge, 3 configurations, report | Phase 4 plan and its five decisions |
 | 10-25 | 8. Deployment | Demo protections, ONNX backend, Streamlit Cloud fixes, passage display | Hosting choice; app and secrets setup |
-| 10-27 | 9. Hardening | Memory fix for uploads; guardrails and their red-team evaluation; this report shortened | Guardrails; polish scope; the attribution in this report |
+| 10-27 | 9. Hardening | Memory fix for uploads; guardrails and red-team evaluation; CI; near-duplicate detection; `/metrics`; latency benchmark; code and docs cleanup | Guardrails; polish scope; the attribution in this report |
