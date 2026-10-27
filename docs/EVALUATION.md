@@ -5,7 +5,7 @@
 > set, stronger absence check), the report says so.
 
 > How we prove the engine works. Basis of the **Evaluation Report** deliverable. Decision IDs (D1–D11,
-> E1–E5, A1) refer to `GRILL-ME.md`. The suite drives the **same FastAPI endpoints** the UI uses
+> E1–E5, A1) refer to `DECISIONS.md`. The suite drives the **same FastAPI endpoints** the UI uses
 > (`/search`, `/ask`), so it measures the real system (D5).
 
 ---

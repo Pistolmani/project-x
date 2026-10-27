@@ -1,7 +1,7 @@
 # DATABASE — Vector Store & Document Management
 
 > How data is stored, linked, de-duplicated, and kept durable. Decision IDs (D1–D11) refer to
-> `GRILL-ME.md`. **Store:** Qdrant Cloud (D2). **No separate relational DB** — the document registry
+> `DECISIONS.md`. **Store:** Qdrant Cloud (D2). **No separate relational DB** — the document registry
 > lives inside Qdrant too (D6).
 
 ---

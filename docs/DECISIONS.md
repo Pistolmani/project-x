@@ -1,19 +1,9 @@
-# GRILL-ME — The Decision Log & Defense Sheet
+# Decision Log
 
-> **Purpose.** This is the single source of truth for *every* important decision in this project.
-> If you (or any agent) ever need to know "what did we choose and why", it is here — you should
-> never have to search the code to reconstruct a decision.
->
-> **How to use it for interview prep.** Hand this file to an agent and say *"read GRILL-ME.md and
-> grill me on it"* (this pairs with the `grilling` skill). The agent will interview you decision by
-> decision until you can defend each one cold, with no AI in the room.
->
-> **Format of each decision:**
-> - **Choice** — what we picked.
-> - **Why** — the reasoning in plain language.
-> - **Alternatives rejected** — and the specific reason each lost.
-> - **Defend it** — the one-paragraph answer you give when challenged.
-> - **Likely attacks** — the follow-up questions an interviewer will push on, with answers.
+> Every important decision in this project: what was chosen, why, what was rejected and for what reason.
+> Each entry has **Choice**, **Why**, **Alternatives rejected**, **In short** (the one-paragraph
+> reasoning) and **Questions it raises** (with answers). Where the build later changed a decision, an
+> **Outcome** note says what changed and why; the original reasoning is kept.
 
 ---
 
@@ -51,11 +41,11 @@ These were decided first because everything else hangs off them.
     only a few hundred documents. We'd have to synthetically inflate it to 50k **and** hand-write all
     40+ eval questions. Too much manual eval work, and synthetic inflation is hard to defend.
   - *RAGBench / synthetic* — more setup, weaker provenance for the metrics.
-- **Defend it.** *"I needed two things at once: ≥50k documents AND an eval set covering
+- **In short.** *"I needed two things at once: ≥50k documents AND an eval set covering
   simple / multi-hop / unanswerable / contradictory with ground truth. HotpotQA gives me supporting-fact
   labels, so my retrieval metrics are computed against a real gold standard rather than my own opinion.
   I generate the unanswerable and contradictory cases myself on top of it."*
-- **Likely attacks.**
+- **Questions it raises.**
   - *"HotpotQA is Wikipedia, not outage reports like your example."* → The example is illustrative; the
     pipeline is domain-agnostic. I can point the same ingestion + retrieval + reasoning stack at a
     post-mortems corpus and demo it. Nothing in the architecture assumes Wikipedia.
@@ -79,10 +69,10 @@ These were decided first because everything else hangs off them.
     full-text; Qdrant's native sparse vectors + HNSW tuning are purpose-built. Viable fallback.
   - *Weaviate Cloud* — fine, built-in hybrid, but heavier model; Qdrant is simpler to reason about.
   - *Chroma* — simplest locally, weakest story for hosted + persistent.
-- **Defend it.** *"Vectors live in Qdrant Cloud so persistence is independent of my free compute host
+- **In short.** *"Vectors live in Qdrant Cloud so persistence is independent of my free compute host
   restarting. Qdrant stores dense and sparse vectors natively, which is exactly what my hybrid search
   needs, and its payload filters let me do metadata-scoped retrieval and surgical add/update/delete."*
-- **Likely attacks.**
+- **Questions it raises.**
   - *"Why not pgvector to cut a service?"* → Acceptable tradeoff: one extra managed service in exchange
     for native sparse vectors, payload indexing, and HNSW controls I'd otherwise re-implement in SQL.
   - *"What's your free-tier size limit and what happens at 50k+ vectors?"* → Documented in `DATABASE.md`;
@@ -99,10 +89,10 @@ These were decided first because everything else hangs off them.
   - *Groq (Llama/Qwen)* — very fast and free; a strong fallback LLM if Gemini limits bite.
   - *Hosted embeddings (Jina/Voyage/Gemini-embeddings)* — only needed if the host lacks RAM; ours doesn't.
   - *OpenAI* — best quality but **not free**; disqualified by the free-tier requirement.
-- **Defend it.** *"Everything on the critical path is free. Gemini handles reasoning and tool-calling;
+- **In short.** *"Everything on the critical path is free. Gemini handles reasoning and tool-calling;
   embeddings and re-ranking run locally with `bge` models, which also gives me a real cross-encoder
   re-ranking stage to defend as a quality component."*
-- **Likely attacks.**
+- **Questions it raises.**
   - *"Local models on a free host — cold starts and RAM?"* → Models are loaded once at startup and kept
     warm; the chosen host has enough RAM (see D4). Embedding model size is deliberately modest.
   - *"Why `bge` specifically, and what are its dimensions / similarity metric?"* → Documented in
@@ -111,6 +101,11 @@ These were decided first because everything else hangs off them.
     fallback.
 
 ### D4 — Hosting: **Hugging Face Spaces**
+
+> **Outcome (2026-10-25): superseded.** Hugging Face Docker Spaces became a paid feature. The app runs on
+> **Streamlit Community Cloud**: the models were moved to ONNX (FastEmbed) to fit its ~2.7 GB, and FastAPI runs
+> in a thread inside the Streamlit process, still reached over HTTP. The two objections below were solved that
+> way rather than by switching to hosted embeddings. Details: `SETUP.md` §5, `results/onnx_parity.json`.
 
 - **Choice.** Deploy on **Hugging Face Spaces** (free tier); vectors live in Qdrant Cloud.
 - **Why.** Free; enough RAM to run the local embedding + reranker models; native support for the Streamlit
@@ -128,11 +123,11 @@ These were decided first because everything else hangs off them.
     (D5); (3) apps sleep on inactivity. HF Spaces gives the same "push-repo-and-it-runs" ease for Streamlit
     *plus* ~16 GB RAM, so it can carry the backend and local models too. Choosing Community Cloud would have
     forced switching D3 to a **hosted embedding API** and collapsing to a single process — a worse system.
-- **Defend it.** *"Spaces gives me free compute with enough RAM for my local models and clean secret
+- **In short.** *"Spaces gives me free compute with enough RAM for my local models and clean secret
   handling. I deliberately keep durable state (vectors, document registry) off the ephemeral Space so a
   restart never loses data. I didn't use Streamlit Community Cloud because its ~1 GB limit can't hold my
   local embedding + reranker models or my separate FastAPI process."*
-- **Likely attacks.**
+- **Questions it raises.**
   - *"Spaces sleep and the disk is ephemeral — isn't your data gone?"* → Vectors are in Qdrant Cloud; the
     document registry's persistence boundary is documented in `DATABASE.md`. The Space is stateless compute.
   - *"Why not just host on Streamlit, it's a Streamlit app?"* → The UI is Streamlit, but the system also
@@ -150,9 +145,9 @@ These were decided first because everything else hangs off them.
   - *Single Gradio app* — fastest to build, but blurs API/UI separation and is harder to test headlessly.
   - *FastAPI + Next.js/React* — most polished, most work; not worth it for an evaluation task where the
     engineering story matters more than pixel polish.
-- **Defend it.** *"The eval harness and the UI both hit the same FastAPI endpoints, so my evaluation
+- **In short.** *"The eval harness and the UI both hit the same FastAPI endpoints, so my evaluation
   measures exactly what a user experiences. The separation also makes the pipeline unit-testable."*
-- **Likely attacks.**
+- **Questions it raises.**
   - *"Two processes on one Space — how does that actually run?"* → Deployment topology (how FastAPI and
     Streamlit coexist on the Space) is documented in `BACKEND.md` / `FRONTEND.md`.
 
@@ -173,10 +168,10 @@ These shape the module docs (`BACKEND.md`, `DATABASE.md`, `FRONTEND.md`).
   its source document.
 - **Alternatives rejected.** SQLite-on-Space (ephemeral → would vanish on rebuild); SQLite-as-rebuildable-
   cache (extra sync code); hosted Postgres (extra service + secret to manage).
-- **Defend it.** *"All durable state is in Qdrant Cloud; the compute host holds nothing it can't lose. A
+- **In short.** *"All durable state is in Qdrant Cloud; the compute host holds nothing it can't lose. A
   `documents` collection gives me document-level lifecycle, and `doc_id` on every chunk links the two —
   no second database to desync or lose."*
-- **Likely attacks.** *"Qdrant isn't relational — how do you list/dedup?"* → scroll API + payload indexes
+- **Questions it raises.** *"Qdrant isn't relational — how do you list/dedup?"* → scroll API + payload indexes
   on `doc_id`, `sha256`, `version`; dedup = `sha256` filter before insert.
 
 ### D7 — Hybrid keyword search: **Qdrant native sparse vectors**
@@ -186,7 +181,7 @@ These shape the module docs (`BACKEND.md`, `DATABASE.md`, `FRONTEND.md`).
 - **Why.** One persistent store, native hybrid, nothing to rebuild on restart.
 - **Alternatives rejected.** In-memory BM25 (`rank_bm25`) — not persistent, rebuilt every boot; Postgres
   full-text — only if the registry were Postgres.
-- **Defend it.** *"The keyword signal is a sparse vector living next to the dense vector in the same store,
+- **In short.** *"The keyword signal is a sparse vector living next to the dense vector in the same store,
   so hybrid search is one system with no separate inverted index to host or sync."*
 
 ### D8 — Custom ranking component: **BOTH — custom weighted RRF + custom feature re-ranker** (+ bge-reranker bonus)
@@ -197,12 +192,12 @@ These shape the module docs (`BACKEND.md`, `DATABASE.md`, `FRONTEND.md`).
   prior** (weights tuned on a separate tuning set, never on the eval set); final top-k capped at 2 chunks
   per article. A **(3)**
   off-the-shelf `bge-reranker` cross-encoder refines the top-N as a *bonus*.
-- **Why.** The spec bans a 100%-off-the-shelf search stack. Two custom stages overshoot the bar and give a
-  strong interview story; the cross-encoder adds the advanced-reranking bonus.
-- **Defend it.** *"RRF is scale-free rank fusion I wrote and can tune; the feature re-ranker adds signals a
+- **Why.** The spec bans a 100%-off-the-shelf search stack. Two custom stages go beyond the minimum and each
+  can be measured on its own; the cross-encoder adds the advanced-reranking bonus.
+- **In short.** *"RRF is scale-free rank fusion I wrote and can tune; the feature re-ranker adds signals a
   cross-encoder can't see (title match, entity/phrase overlap, answer-type) and is fully explainable; the
   bge cross-encoder is an optional precision pass on the short list."* (Detail: `BACKEND.md` §4.)
-- **Likely attacks.** *"Why RRF over summing scores?"* → dense cosine and sparse BM25 are different scales;
+- **Questions it raises.** *"Why RRF over summing scores?"* → dense cosine and sparse BM25 are different scales;
   RRF uses ranks. *"Is the feature re-ranker redundant with bge?"* → no — cheaper, runs on all candidates,
   sees signals bge can't. *"Why not recency / source authority?"* → the corpus is single-source and
   undated, so they carry no signal — and recency would even **promote the injected contradictions**
@@ -215,9 +210,9 @@ These shape the module docs (`BACKEND.md`, `DATABASE.md`, `FRONTEND.md`).
 - **Why.** Cleanest, most defensible contrast; B is expected to win on Recall@K/MRR. On **full articles**
   (revised D1) the 256-token cap makes the two strategies genuinely diverge. Compared at full 50k scale in
   local Qdrant; only the winner goes to Qdrant Cloud (disk limit).
-- **Defend it.** *"Blind windows vs. structure-aware splitting is a crisp A/B; on full articles they
+- **In short.** *"Blind windows vs. structure-aware splitting is a crisp A/B; on full articles they
   produce clean vs. blended chunks, and I compare them on Recall@K/MRR at full scale."*
-- **Attack.** *"Your chunk-level gold-sentence metric — does it separate them?"* → No, and I measured
+- **Question.** *"Your chunk-level gold-sentence metric — does it separate them?"* → No, and I measured
   why: HotpotQA's gold sentences sit in the lead at offset 0, inside the first fixed window, so fixed cuts
   only 0.2% of them. I report that as a finding instead of leaning on a metric that can't discriminate.
 
@@ -227,10 +222,10 @@ These shape the module docs (`BACKEND.md`, `DATABASE.md`, `FRONTEND.md`).
   plan→act→observe→decide loop, bounded by a max-iteration cap and tool-call budget.
 - **Why.** Satisfies tool-calling + multi-step reasoning + the agentic-RAG bonus, and matches the
   "investigation engine" framing.
-- **Defend it.** *"The model decides what to look up next based on what it just learned — that's real
+- **In short.** *"The model decides what to look up next based on what it just learned — that's real
   multi-hop investigation, not a fixed pipeline. Iteration caps and a tool-call budget keep it bounded and
   traceable."* (Detail + the grounding/refusal check: `BACKEND.md` §5.)
-- **Likely attacks.** *"Non-deterministic / infinite loops?"* → hard iteration cap, tool-call budget,
+- **Questions it raises.** *"Non-deterministic / infinite loops?"* → hard iteration cap, tool-call budget,
   timeouts. *"Trace it live?"* → every tool call + decision is logged and shown in the UI trace view.
 
 ### D11 — Frontend scope: **three Streamlit pages**
@@ -239,7 +234,7 @@ These shape the module docs (`BACKEND.md`, `DATABASE.md`, `FRONTEND.md`).
   source viewer, refusal/contradiction display, trace view), (3) Evaluation dashboard (metrics + config
   comparison + failure modes).
 - **Why.** Covers all required UI and makes the evaluation deliverable visual. (Detail: `FRONTEND.md`.)
-- **Defend it.** *"The UI is a thin client over the same API the eval suite uses, so the demo is exactly
+- **In short.** *"The UI is a thin client over the same API the eval suite uses, so the demo is exactly
   what I measure."*
 
 ---
@@ -252,16 +247,16 @@ These drive `EVALUATION.md`, the basis of the Evaluation Report deliverable.
 - **Why.** HotpotQA gold answers are short spans, but our engine outputs cited prose. A judge model
   scores semantic correctness (handles reworded-but-correct answers); F1/EM is a cheap, reproducible
   cross-check that catches a drifting judge.
-- **Defend it.** *"EM alone would fail a correct answer just for rephrasing, so I use a rubric-based judge
+- **In short.** *"EM alone would fail a correct answer just for rephrasing, so I use a rubric-based judge
   as primary and keep F1/EM as a reproducible sanity check. Judge runs at temperature 0 with a fixed
   rubric to limit variance."*
-- **Attack.** *"LLM judges are biased/unstable."* → temp-0 + rubric + F1/EM cross-check; disagreements are
+- **Question.** *"LLM judges are biased/unstable."* → temp-0 + rubric + F1/EM cross-check; disagreements are
   surfaced in failure analysis.
 
 ### E2 — Citation Accuracy: **precision / recall / F1 of cited docs vs. gold supporting docs**
 - **Why.** HotpotQA ships gold supporting facts, so we can measure both **over-citing** (precision) and
   **missing evidence** (recall) against ground truth.
-- **Defend it.** *"Binary 'cited something right' hides over- and under-citation; P/R/F1 against the gold
+- **In short.** *"Binary 'cited something right' hides over- and under-citation; P/R/F1 against the gold
   supporting docs shows exactly how precise my citations are."*
 
 ### E3 — Test set: **~50 questions (15 simple / 15 multi-hop / 10 unanswerable / 10 contradictory)**
@@ -275,7 +270,7 @@ These drive `EVALUATION.md`, the basis of the Evaluation Report deliverable.
   document** (not a modified article copy).
 - **Why.** Reuses real ground truth; the absence check closes the "answer might still be elsewhere" gap; a
   standalone doc stays distinct (survives exact-dedup) and avoids the near-dup-collapse trap.
-- **Attack.** *"How do you know the unanswerable ones are truly unanswerable?"* → I remove the gold articles
+- **Question.** *"How do you know the unanswerable ones are truly unanswerable?"* → I remove the gold articles
   **and** confirm the answer string no longer appears anywhere in the index — which is only meaningful
   because I restrict to distinctive entity answers (a "yes" or "1990" appears everywhere).
 
@@ -294,7 +289,7 @@ These drive `EVALUATION.md`, the basis of the Evaluation Report deliverable.
 - **Why.** Each chosen bonus earns spec credit *and* serves a core need: caching also shields us from Gemini
   rate limits; prompt-injection tests strengthen both eval and the security story; monitoring powers the UI
   trace view. The dropped items are high-effort / low-payoff for an evaluation task.
-- **Defend it.** *"I picked bonuses that double as risk mitigations or reuse existing machinery, not
+- **In short.** *"I picked bonuses that double as risk mitigations or reuse existing machinery, not
   features for their own sake."*
 
 ### A2 — Model pinning
@@ -307,7 +302,7 @@ These drive `EVALUATION.md`, the basis of the Evaluation Report deliverable.
 - **Defaults (accepted as a bundle):** reranker **`bge-reranker-base`**; sparse/keyword vectors via
   **BM25 (FastEmbed)**; chunk token counting via the **`bge` tokenizer** (not tiktoken — counting with
   the embedding model's own tokenizer means the 256-token cap is exactly what the model sees).
-- **Attack.** *"small embeddings = weak retrieval?"* → hybrid + two rerank stages compensate; RAM safety on a
+- **Question.** *"small embeddings = weak retrieval?"* → hybrid + two rerank stages compensate; RAM safety on a
   free host is the deliberate trade-off, with `bge-base` ready if metrics demand it.
 
 ### A3 — Dataset ingestion: **full Wikipedia articles (HotpotQA-labeled) → ~50k, ingested offline**
@@ -318,21 +313,25 @@ These drive `EVALUATION.md`, the basis of the Evaluation Report deliverable.
   `DATASET.md`.
 - **Why.** Full articles give long documents so chunking is meaningful; offline embedding avoids the slow
   Space CPU; the seeded manifest makes the count reproducible.
-- **Attack.** *"Labels were on 2017 Wikipedia — still valid?"* → yes; I swap the exact 2017 opening
+- **Question.** *"Labels were on 2017 Wikipedia — still valid?"* → yes; I swap the exact 2017 opening
   paragraph (which holds the gold sentences) back into the modern article; unresolved titles are dropped
   and logged in the manifest.
-- **Attack.** *"Doesn't the modern article contradict your 2017 paragraph?"* → that's why I replace the
+- **Question.** *"Doesn't the modern article contradict your 2017 paragraph?"* → that's why I replace the
   **whole lead section**, not just its first paragraph — modern leads restate updated facts, which would
   plant unintended contradictions. Rarer conflicts deeper in the body are traceable via the manifest.
 
 ### A4 — Packaging: **Docker Space, one entrypoint running FastAPI + Streamlit**
+
+> **Outcome:** the Dockerfile is kept for any Docker host; the live demo uses Streamlit Community Cloud (D4).
 - **Why.** Full control over the two-process topology, pinned dependencies, reproducible builds; preserves
   the API/UI separation (D5). The entrypoint starts uvicorn (FastAPI) then Streamlit; Streamlit calls the
   API on localhost.
-- **Attack.** *"Two processes in one container — how?"* → documented entrypoint + ports; test the topology
+- **Question.** *"Two processes in one container — how?"* → documented entrypoint + ports; test the topology
   early rather than at deploy time.
 
 ### A5 — Secrets & config: **`pydantic-settings` + `.env` locally, Space secrets in deploy**
+
+> **Outcome:** on Streamlit Community Cloud the same variables are app secrets (`.streamlit/secrets.toml`, git-ignored).
 - **Why.** Satisfies "secrets managed properly": no keys in git; a committed `.env.example` documents the
   variables; the Space injects the same names as secrets. (Detail: `SETUP.md` §2.)
 
@@ -342,7 +341,7 @@ These drive `EVALUATION.md`, the basis of the Evaluation Report deliverable.
 
 ### A7 — Testing: **small pytest suite** (ingestion, ranking, refusal)
 - **Why.** Focused tests for the ingestion path, the custom ranking (RRF + feature reranker), and the
-  refusal/contradiction logic — cheap insurance and directly supports the "fix a bug live" interview moment.
+  refusal/contradiction logic — cheap insurance that makes bugs quick to find and fix.
 
 ### A8 — CI/CD: **stretch** (manual deploys until then)
 - **Why.** A GitHub Action to auto-deploy to the Space is nice-to-have; core system comes first.
@@ -356,7 +355,7 @@ These drive `EVALUATION.md`, the basis of the Evaluation Report deliverable.
 | D1  | Dataset / corpus                 | HotpotQA labels over full Wikipedia articles   | this / DATASET.md |
 | D2  | Vector database                  | Qdrant Cloud                                   | DATABASE.md |
 | D3  | LLM + embeddings + reranker      | Gemini + local bge + bge-reranker              | BACKEND.md |
-| D4  | Hosting                          | Hugging Face Spaces                            | this |
+| D4  | Hosting                          | Hugging Face Spaces → **Streamlit Community Cloud** (outcome note) | this / SETUP.md |
 | D5  | App stack                        | FastAPI + Streamlit                            | BACKEND / FRONTEND |
 | D6  | Document registry store          | Qdrant-only + `documents` collection           | DATABASE.md |
 | D7  | Hybrid keyword mechanism         | Qdrant native sparse vectors                   | DATABASE / BACKEND |

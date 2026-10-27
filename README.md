@@ -8,10 +8,9 @@ missing or contradictory.
 **Live demo:** https://project-x-1.streamlit.app. The 50k-article corpus is read-only there; uploads, updates and
 deletes work on your own documents.
 
-> Decisions & rationale: [`GRILL-ME.md`](./docs/GRILL-ME.md). Modules: [`BACKEND.md`](./docs/BACKEND.md) ·
+> Decisions & rationale: [`DECISIONS.md`](./docs/DECISIONS.md). Modules: [`BACKEND.md`](./docs/BACKEND.md) ·
 > [`DATABASE.md`](./docs/DATABASE.md) · [`FRONTEND.md`](./docs/FRONTEND.md) · [`EVALUATION.md`](./docs/EVALUATION.md) ·
-> [`DATASET.md`](./docs/DATASET.md) · [`SETUP.md`](./docs/SETUP.md). Prep: [`VISUAL-PLAN.md`](./docs/VISUAL-PLAN.md) ·
-> [`INTERVIEW-PREP.md`](./docs/INTERVIEW-PREP.md) · [`AI-USAGE.md`](./docs/AI-USAGE.md).
+> [`DATASET.md`](./docs/DATASET.md) · [`SETUP.md`](./docs/SETUP.md) · [`AI-USAGE.md`](./docs/AI-USAGE.md).
 
 ---
 

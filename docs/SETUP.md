@@ -1,7 +1,7 @@
 # SETUP — Local Dev, Offline Ingestion & Deployment
 
 > Run it locally, ingest the corpus offline, and deploy to Streamlit Community Cloud. Covers the **free-tier
-> limits and secret handling the brief explicitly requires**. Decision IDs refer to `GRILL-ME.md`.
+> limits and secret handling the brief explicitly requires**. Decision IDs refer to `DECISIONS.md`.
 
 ---
 

@@ -1,6 +1,6 @@
 # DATASET — Corpus Construction & Eval-Set Carving
 
-> How we build the ≥50k-document corpus and the evaluation sets. Decision IDs refer to `GRILL-ME.md`.
+> How we build the ≥50k-document corpus and the evaluation sets. Decision IDs refer to `DECISIONS.md`.
 > **A document = a full Wikipedia article** (D1, revised), labeled by HotpotQA.
 
 ---
